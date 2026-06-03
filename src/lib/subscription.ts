@@ -18,18 +18,21 @@ export async function getSubscriptionServer() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('org_id, is_superadmin')
+    .select('org_id, role, is_superadmin')
     .eq('id', user.id)
     .single()
 
   const isAdmin = !!profile?.is_superadmin
+  const isOwner = profile?.role === 'owner'
+  const isPermitted = isAdmin || isOwner
 
   if (!profile?.org_id) {
     return {
       subscriptionStatus: null,
-      isPremium: isAdmin,
-      isReadOnly: !isAdmin,
+      isPremium: isPermitted,
+      isReadOnly: !isPermitted,
       isAdmin,
+      isOwner,
     }
   }
 
@@ -40,7 +43,7 @@ export async function getSubscriptionServer() {
     .single()
 
   const subscriptionStatus = org?.subscription_status || null
-  const isPremium = subscriptionStatus === 'active' || subscriptionStatus === 'trialing' || isAdmin
+  const isPremium = subscriptionStatus === 'active' || subscriptionStatus === 'trialing' || isPermitted
   const isReadOnly = !isPremium
 
   return {
@@ -48,6 +51,7 @@ export async function getSubscriptionServer() {
     isPremium,
     isReadOnly,
     isAdmin,
+    isOwner,
   }
 }
 

@@ -50,13 +50,13 @@ export async function middleware(request: NextRequest) {
     if (isPremiumPath) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('org_id, is_superadmin')
+        .select('org_id, role, is_superadmin')
         .eq('id', user.id)
         .single()
 
       let isPremiumActive = false
 
-      if (profile?.is_superadmin === true) {
+      if (profile?.is_superadmin === true || profile?.role === 'owner') {
         isPremiumActive = true
       } else if (profile?.org_id) {
         const { data: org } = await supabase

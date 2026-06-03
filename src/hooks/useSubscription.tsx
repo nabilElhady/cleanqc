@@ -10,6 +10,7 @@ export interface SubscriptionContextType {
   openUpgradeModal: () => void
   closeUpgradeModal: () => void
   isAdmin: boolean
+  isOwner: boolean
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined)
@@ -18,14 +19,16 @@ export function SubscriptionProvider({
   children,
   initialStatus,
   isAdmin = false,
+  isOwner = false,
 }: {
   children: React.ReactNode
   initialStatus: string | null
   isAdmin?: boolean
+  isOwner?: boolean
 }) {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
 
-  const isPremium = initialStatus === 'active' || initialStatus === 'trialing' || isAdmin
+  const isPremium = initialStatus === 'active' || initialStatus === 'trialing' || isAdmin || isOwner
   const isReadOnly = !isPremium
 
   const openUpgradeModal = () => setIsUpgradeModalOpen(true)
@@ -41,6 +44,7 @@ export function SubscriptionProvider({
         openUpgradeModal,
         closeUpgradeModal,
         isAdmin,
+        isOwner,
       }}
     >
       {children}
