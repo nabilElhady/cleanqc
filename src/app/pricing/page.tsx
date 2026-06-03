@@ -16,6 +16,7 @@ export default async function PricingPage() {
 
   let userRole: string | null = null
   let orgId: string | null = null
+  let subscriptionStatus: string | null = null
 
   if (user) {
     const { data: profile } = await supabase
@@ -27,6 +28,18 @@ export default async function PricingPage() {
     if (profile) {
       userRole = profile.role
       orgId = profile.org_id
+
+      if (profile.org_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('subscription_status')
+          .eq('id', profile.org_id)
+          .single()
+
+        if (org) {
+          subscriptionStatus = org.subscription_status
+        }
+      }
     }
   }
 
@@ -68,6 +81,7 @@ export default async function PricingPage() {
               isAuthenticated={!!user}
               userRole={userRole}
               orgId={orgId}
+              subscriptionStatus={subscriptionStatus}
               features={features}
               paddleClientToken={process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || ''}
               paddlePriceId={process.env.NEXT_PUBLIC_PADDLE_PRICE_ID || ''}

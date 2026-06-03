@@ -31,12 +31,49 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect /dashboard route
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+  const protectedPaths = ['/dashboard', '/templates', '/jobs', '/team']
+  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+
+  // 1. Protect routes requiring authentication
+  if (isProtectedPath) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
+      url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search)
       return NextResponse.redirect(url)
+    }
+
+    // 2. Gate premium features: templates, jobs, team
+    const premiumPaths = ['/templates', '/jobs', '/team']
+    const isPremiumPath = premiumPaths.some(path => request.nextUrl.pathname.startsWith(path))
+
+    if (isPremiumPath) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single()
+
+      let isPremiumActive = false
+
+      if (profile?.org_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('subscription_status')
+          .eq('id', profile.org_id)
+          .single()
+
+        if (org?.subscription_status === 'active' || org?.subscription_status === 'trialing') {
+          isPremiumActive = true
+        }
+      }
+
+      if (!isPremiumActive) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/pricing'
+        url.searchParams.set('error', 'This feature requires an active premium subscription.')
+        return NextResponse.redirect(url)
+      }
     }
   }
 

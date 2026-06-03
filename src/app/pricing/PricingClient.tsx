@@ -8,6 +8,7 @@ interface PricingClientProps {
   isAuthenticated: boolean
   userRole: string | null
   orgId: string | null
+  subscriptionStatus: string | null
   features: string[]
   paddleClientToken: string
   paddlePriceId: string
@@ -17,6 +18,7 @@ interface PricingClientProps {
 function PricingClientInner({
   isAuthenticated,
   userRole,
+  subscriptionStatus,
   features,
   paddleClientToken,
   paddleEnv,
@@ -27,6 +29,7 @@ function PricingClientInner({
   const [initializing, setInitializing] = useState(true)
   const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const errorParam = searchParams.get('error')
 
   // Initialize Paddle.js using official loader
   useEffect(() => {
@@ -128,6 +131,48 @@ function PricingClientInner({
     return 'Subscribe Now'
   }
 
+  const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+
+  // Upsell Prevention Layout State
+  if (isSubscribed) {
+    return (
+      <div className="bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex flex-col justify-between w-full min-h-[500px]">
+        <div>
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <span className="font-mono text-xs uppercase tracking-widest text-emerald-600 font-bold mb-1">
+                Active Subscription
+              </span>
+              <h2 className="text-3xl font-extrabold text-[#09090B]">CleanQC Pro</h2>
+            </div>
+          </div>
+
+          <p className="text-zinc-700 text-sm mb-8 leading-relaxed font-medium">
+            Your system is active. Thank you for your support!
+          </p>
+
+          <div className="border-t border-[#E4E4E7] pt-6 mb-8">
+            <div className="flex items-center justify-between text-sm font-mono">
+              <span className="text-zinc-500">Subscription Status</span>
+              <span className="text-emerald-600 font-bold uppercase tracking-wider bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs">
+                {subscriptionStatus}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto">
+          <a
+            href="/dashboard"
+            className="w-full bg-[#09090B] text-white hover:bg-zinc-800 py-4 px-6 font-mono text-sm uppercase tracking-wider font-bold transition-all duration-150 flex items-center justify-center border border-[#09090B] shadow-[2px_2px_0px_#FFFFFF] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none text-center cursor-pointer"
+          >
+            Go to Dashboard
+          </a>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex flex-col justify-between w-full min-h-[500px]">
       <div>
@@ -142,6 +187,12 @@ function PricingClientInner({
             <span className="font-mono text-3xl font-extrabold">$49</span>
             <span className="text-zinc-500 text-xs font-mono block">/month</span>
           </div>
+        </div>
+
+        {/* 7-Day Free Trial Notice Banner */}
+        <div className="mb-6 p-3 bg-zinc-50 border border-[#E4E4E7] text-[#09090B] text-xs font-mono flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+          <span className="font-bold tracking-tight uppercase">Includes 7-Day Free Trial</span>
         </div>
 
         <p className="text-zinc-500 text-sm mb-8 leading-relaxed">
@@ -165,9 +216,9 @@ function PricingClientInner({
       </div>
 
       <div className="mt-auto">
-        {errorMsg && (
+        {(errorMsg || errorParam) && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-mono">
-            {errorMsg}
+            {errorMsg || errorParam}
           </div>
         )}
 
