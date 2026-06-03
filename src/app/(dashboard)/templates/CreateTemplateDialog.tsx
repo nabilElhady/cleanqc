@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { createTemplate } from '@/app/actions/templates'
+import { PremiumActionWrapper } from '@/components/billing/PremiumActionWrapper'
 
 export function CreateTemplateDialog() {
   const [open, setOpen] = React.useState(false)
@@ -33,10 +34,12 @@ export function CreateTemplateDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Template
-        </Button>
+        <PremiumActionWrapper>
+          <Button className="cursor-pointer">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Template
+          </Button>
+        </PremiumActionWrapper>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

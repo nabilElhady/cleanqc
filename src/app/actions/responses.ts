@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
+import { assertPremiumServer } from '@/lib/subscription'
 
 interface JobResponseInput {
   itemId: string
@@ -21,6 +22,7 @@ export async function submitJobResponse(
   responses: JobResponseInput[]
 ): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     if (!jobId || !responses || responses.length === 0) {
       return { success: false, error: 'Job ID and checklist responses are required.' }
     }

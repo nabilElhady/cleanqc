@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { Plus, Loader2, Trash2, Camera, Sparkles, ClipboardList, CheckSquare } from 'lucide-react'
+import { PremiumActionWrapper } from '@/components/billing/PremiumActionWrapper'
 
 interface CreateJobFormProps {
   templates: { id: string; name: string }[]
@@ -152,10 +153,12 @@ export function CreateJobForm({ templates, crew }: CreateJobFormProps) {
       if (!isOpen) resetForm()
     }}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <Plus className="h-4.5 w-4.5 mr-2" />
-          Dispatch New Job
-        </Button>
+        <PremiumActionWrapper>
+          <Button className="cursor-pointer">
+            <Plus className="h-4.5 w-4.5 mr-2" />
+            Dispatch New Job
+          </Button>
+        </PremiumActionWrapper>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto border-white/8 bg-[#18181B] text-[#FAFAFA]">
         <DialogHeader>

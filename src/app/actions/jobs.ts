@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
+import { assertPremiumServer } from '@/lib/subscription'
 
 interface CustomChecklistItem {
   label: string
@@ -26,6 +27,7 @@ export async function createJob(
   }
 ): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     if (!title.trim() || !location.trim() || !assignedTo || !scheduledAt) {
       return { success: false, error: 'Title, location, assigned crew, and schedule are required.' }
     }

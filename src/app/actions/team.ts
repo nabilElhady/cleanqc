@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
+import { assertPremiumServer } from '@/lib/subscription'
 
 /**
  * Creates a new crew member user and registers their profile with the manager's organization.
@@ -14,6 +15,7 @@ export async function inviteCrewMember(
   password?: string
 ): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     if (!name.trim() || !email.trim()) {
       return { success: false, error: 'Name and email are required.' }
     }
@@ -92,6 +94,7 @@ export async function inviteCrewMember(
  */
 export async function deleteCrewMember(crewMemberId: string): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     if (!crewMemberId) {
       return { success: false, error: 'Crew member ID is required.' }
     }

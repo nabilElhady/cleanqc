@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { inviteCrewMember } from '@/app/actions/team'
+import { PremiumActionWrapper } from '@/components/billing/PremiumActionWrapper'
 
 export function InviteCrewDialog() {
   const router = useRouter()
@@ -45,10 +46,12 @@ export function InviteCrewDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
-          Invite Crew Member
-        </Button>
+        <PremiumActionWrapper>
+          <Button className="cursor-pointer">
+            <Plus className="h-4 w-4 mr-2" />
+            Invite Crew Member
+          </Button>
+        </PremiumActionWrapper>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { assertPremiumServer } from '@/lib/subscription'
 
 export type ActionResponse<T = any> = {
   success: boolean
@@ -39,6 +40,7 @@ export async function createTemplate(
   description: string
 ): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     if (!name.trim()) {
       return { success: false, error: 'Template name is required.' }
     }
@@ -76,6 +78,7 @@ export async function addTemplateItem(
   requiresPhoto: boolean
 ): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     if (!label.trim()) {
       return { success: false, error: 'Item label is required.' }
     }
@@ -126,6 +129,7 @@ export async function updateItemOrder(
   items: { id: string; sort_order: number }[]
 ): Promise<ActionResponse> {
   try {
+    await assertPremiumServer()
     const supabase = await createClient()
 
     // Perform updates in parallel

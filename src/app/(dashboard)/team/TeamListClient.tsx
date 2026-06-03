@@ -4,6 +4,7 @@ import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Phone, Calendar, Shield, Search, Trash2, AlertCircle, Loader2, Users } from 'lucide-react'
 import { deleteCrewMember } from '@/app/actions/team'
+import { useSubscription } from '@/hooks/useSubscription'
 
 interface Profile {
   id: string
@@ -31,6 +32,7 @@ function FlatCard({ children, className = '' }: { children: React.ReactNode; cla
 }
 
 export function TeamListClient({ profiles, emailMap, currentUserId, currentUserRole }: TeamListClientProps) {
+  const { isReadOnly, openUpgradeModal } = useSubscription()
   const [searchQuery, setSearchQuery] = React.useState('')
   const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
   const [isDeletingId, setIsDeletingId] = React.useState<string | null>(null)
@@ -229,6 +231,10 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  if (isReadOnly) {
+                                    openUpgradeModal()
+                                    return
+                                  }
                                   setConfirmDeleteId(profile.id)
                                 }}
                                 className="p-1 text-[#71717A] hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer"

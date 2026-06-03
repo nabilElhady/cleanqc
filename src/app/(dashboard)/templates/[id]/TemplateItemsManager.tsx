@@ -23,6 +23,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { GripVertical, Camera, Plus, Loader2, AlertCircle } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useSubscription } from '@/hooks/useSubscription'
 
 interface TemplateItem {
   id: string
@@ -80,7 +81,7 @@ function SortableItem({ id, label, requiresPhoto }: SortableItemProps) {
       <span className="flex-1 text-sm font-medium text-white">{label}</span>
 
       {requiresPhoto && (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 text-xs font-semibold text-[#8B5CF6]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 text-xs font-semibold text-[#8B5CF6]">
           <Camera className="h-3.5 w-3.5" />
           Photo required
         </span>
@@ -90,6 +91,7 @@ function SortableItem({ id, label, requiresPhoto }: SortableItemProps) {
 }
 
 export function TemplateItemsManager({ templateId, initialItems }: TemplateItemsManagerProps) {
+  const { isReadOnly, openUpgradeModal } = useSubscription()
   const [items, setItems] = React.useState<TemplateItem[]>(initialItems)
   const [newLabel, setNewLabel] = React.useState('')
   const [requiresPhoto, setRequiresPhoto] = React.useState(false)
@@ -116,6 +118,11 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
+    if (isReadOnly) {
+      openUpgradeModal()
+      return
+    }
+
     if (!over || active.id === over.id) return
 
     // Optimistically update UI order immediately
@@ -141,6 +148,10 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isReadOnly) {
+      openUpgradeModal()
+      return
+    }
     if (!newLabel.trim()) return
 
     setIsAdding(true)
