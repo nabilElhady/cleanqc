@@ -4,6 +4,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, ClipboardList, Camera, MapPin, ChevronRight, Zap, CheckCircle2 } from 'lucide-react'
+import CheckoutCallbackTracker from '@/components/checkout/CheckoutCallbackTracker'
 
 // Magnetic Brutalist CTA Button with instant snap
 function SolidCTAButton({ href, children }: { href: string; children: React.ReactNode }) {
@@ -76,6 +77,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative selection:bg-foreground selection:text-background">
+      <CheckoutCallbackTracker />
       {/* Crisp Grid Background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
