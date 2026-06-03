@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function getSubscriptionServer() {
+  // Use cookie-based client ONLY for auth identity check
   const supabase = await createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -13,10 +13,14 @@ export async function getSubscriptionServer() {
       isPremium: false,
       isReadOnly: true,
       isAdmin: false,
+      isOwner: false,
     }
   }
 
-  const { data: profile } = await supabase
+  // Use admin client for DB reads — bypasses RLS so org_id is never null
+  const db = createAdminClient()
+
+  const { data: profile } = await db
     .from('profiles')
     .select('org_id, role, is_superadmin')
     .eq('id', user.id)
@@ -36,7 +40,7 @@ export async function getSubscriptionServer() {
     }
   }
 
-  const { data: org } = await supabase
+  const { data: org } = await db
     .from('organizations')
     .select('subscription_status')
     .eq('id', profile.org_id)

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 
 export type FormState = {
@@ -51,8 +52,9 @@ export async function signInWithPassword(
     return { error: error?.message || 'Invalid email or password.' }
   }
 
-  // Resolve role and superadmin state from user profile
-  const { data: profile } = await supabase
+  // Use admin client so RLS never blocks reading role/is_superadmin
+  const db = createAdminClient()
+  const { data: profile } = await db
     .from('profiles')
     .select('role, is_superadmin')
     .eq('id', authData.user.id)

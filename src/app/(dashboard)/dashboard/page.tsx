@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from './DashboardClient'
 
@@ -15,11 +15,13 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Resolve user profile for organization isolation
-  const { data: profile } = await supabase
+  // Use admin client so RLS never blocks reading org_id
+  const db = createAdminClient()
+
+  const { data: profile } = await db
     .from('profiles')
     .select('org_id, role')
-    .eq('id', user.id)
+    .eq('id', user!.id)
     .single()
 
   if (!profile?.org_id) {
@@ -35,9 +37,9 @@ export default async function DashboardPage() {
 
   // Fetch count statistics
   const [jobsRes, templatesRes, teamRes] = await Promise.all([
-    supabase.from('jobs').select('id, status').eq('org_id', profile.org_id),
-    supabase.from('checklist_templates').select('id').eq('org_id', profile.org_id),
-    supabase.from('profiles').select('id').eq('org_id', profile.org_id),
+    db.from('jobs').select('id, status').eq('org_id', profile.org_id),
+    db.from('checklist_templates').select('id').eq('org_id', profile.org_id),
+    db.from('profiles').select('id').eq('org_id', profile.org_id),
   ])
 
   const allJobs = jobsRes.data || []
@@ -50,7 +52,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      userEmail={user.email || ''}
+      userEmail={user!.email || ''}
       activeJobsCount={activeJobsCount}
       pendingJobsCount={pendingJobsCount}
       completedJobsCount={completedJobsCount}

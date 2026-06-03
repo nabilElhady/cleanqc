@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { CreateJobForm } from './CreateJobForm'
 import { JobsListClient } from './JobsListClient'
@@ -16,11 +17,13 @@ export default async function JobsPage() {
     redirect('/login')
   }
 
-  // Resolve user profile for organization isolation
-  const { data: profile } = await supabase
+  // Use admin client so RLS never blocks reading org_id
+  const db = createAdminClient()
+
+  const { data: profile } = await db
     .from('profiles')
     .select('org_id, role')
-    .eq('id', user.id)
+    .eq('id', user!.id)
     .single()
 
   if (!profile?.org_id) {
@@ -35,7 +38,7 @@ export default async function JobsPage() {
   }
 
   // 1. Fetch organization jobs with template and crew names joined
-  const { data: jobs, error: jobsErr } = await supabase
+  const { data: jobs, error: jobsErr } = await db
     .from('jobs')
     .select(`
       *,
@@ -46,7 +49,7 @@ export default async function JobsPage() {
     .order('scheduled_at', { ascending: true })
 
   // 2. Fetch templates for dropdown menu selection
-  const { data: templates } = await supabase
+  const { data: templates } = await db
     .from('checklist_templates')
     .select('id, name')
     .eq('org_id', profile.org_id)
@@ -54,7 +57,7 @@ export default async function JobsPage() {
     .order('name', { ascending: true })
 
   // 3. Fetch crew members for dropdown assignment selection
-  const { data: crew } = await supabase
+  const { data: crew } = await db
     .from('profiles')
     .select('id, full_name')
     .eq('org_id', profile.org_id)

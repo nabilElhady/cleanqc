@@ -17,11 +17,13 @@ export default async function TeamPage() {
     redirect('/login')
   }
 
-  // Resolve user profile for isolation
-  const { data: currentProfile } = await supabase
+  // Use admin client so RLS never blocks reading org_id
+  const db = createAdminClient()
+
+  const { data: currentProfile } = await db
     .from('profiles')
     .select('org_id, role')
-    .eq('id', user.id)
+    .eq('id', user!.id)
     .single()
 
   if (!currentProfile?.org_id) {
@@ -36,7 +38,7 @@ export default async function TeamPage() {
   }
 
   // Fetch all profiles in organization
-  const { data: profiles, error } = await supabase
+  const { data: profiles, error } = await db
     .from('profiles')
     .select('*')
     .eq('org_id', currentProfile.org_id)

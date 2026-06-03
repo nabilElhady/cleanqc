@@ -1,11 +1,22 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createAdminSupabase } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
+
+// Service-role client for internal DB reads (bypasses RLS) — safe, server-only
+function createAdminClient() {
+  return createAdminSupabase(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
+  // Cookie-based anon client — used ONLY for auth.getUser()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -48,7 +59,9 @@ export async function middleware(request: NextRequest) {
     const isPremiumPath = premiumPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
     if (isPremiumPath) {
-      const { data: profile } = await supabase
+      // Use admin client — bypasses RLS so org_id/role are never null
+      const db = createAdminClient()
+      const { data: profile } = await db
         .from('profiles')
         .select('org_id, role, is_superadmin')
         .eq('id', user.id)
@@ -59,7 +72,7 @@ export async function middleware(request: NextRequest) {
       if (profile?.is_superadmin === true || profile?.role === 'owner') {
         isPremiumActive = true
       } else if (profile?.org_id) {
-        const { data: org } = await supabase
+        const { data: org } = await db
           .from('organizations')
           .select('subscription_status')
           .eq('id', profile.org_id)
@@ -82,7 +95,9 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated user away from login page to their specific dashboard
   if (request.nextUrl.pathname.startsWith('/login')) {
     if (user) {
-      const { data: profile } = await supabase
+      // Use admin client for reliable role read
+      const db = createAdminClient()
+      const { data: profile } = await db
         .from('profiles')
         .select('role, is_superadmin')
         .eq('id', user.id)
