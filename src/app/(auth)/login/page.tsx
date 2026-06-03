@@ -11,11 +11,13 @@ const inputClass = "block w-full pl-10 pr-4 py-3 bg-[#FFFFFF] border border-[#E4
 function LoginForm() {
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
+  const redirectParam = searchParams.get('redirect')
   const [state, formAction, isPending] = useActionState(signInWithPassword, {})
 
   return (
     <div className="bg-[#FAFAFA] border border-[#E4E4E7] p-8">
       <form action={formAction} className="space-y-6">
+        <input type="hidden" name="redirect" value={redirectParam || ''} />
         {(state.error || errorParam) && (
           <div className="flex items-start gap-3 bg-[#FFFFFF] border border-red-500 p-4 text-sm text-red-500 animate-in fade-in duration-200">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -81,7 +83,7 @@ function LoginForm() {
 
       <div className="mt-6 text-center text-sm text-[#71717A] font-medium">
         Don't have an account?{' '}
-        <Link href="/signup" className="text-[#09090B] hover:underline font-bold transition-colors">
+        <Link href={`/signup${redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''}`} className="text-[#09090B] hover:underline font-bold transition-colors">
           Sign Up
         </Link>
       </div>

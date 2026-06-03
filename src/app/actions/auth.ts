@@ -29,6 +29,7 @@ export async function signInWithPassword(
 
   const email = actualFormData.get('email') as string
   const password = actualFormData.get('password') as string
+  const redirectTo = actualFormData.get('redirect') as string
 
   if (!email || !email.includes('@')) {
     return { error: 'Please enter a valid email address.' }
@@ -60,7 +61,9 @@ export async function signInWithPassword(
   const userRole = profile?.role
 
   // Perform role-based server-side redirect
-  if (userRole === 'crew') {
+  if (redirectTo && redirectTo.startsWith('/')) {
+    redirect(redirectTo)
+  } else if (userRole === 'crew') {
     redirect('/crew/jobs')
   } else {
     redirect('/dashboard')
@@ -90,6 +93,7 @@ export async function signUpWithOwner(
   const email = actualFormData.get('email') as string
   const password = actualFormData.get('password') as string
   const orgName = actualFormData.get('orgName') as string
+  const redirectTo = actualFormData.get('redirect') as string
 
   if (!name || name.trim().length === 0) {
     return { error: 'Full Name is required.' }
@@ -171,8 +175,12 @@ export async function signUpWithOwner(
     }
   }
 
-  // Redirect to dashboard
-  redirect('/dashboard')
+  // Redirect to redirect parameter or default dashboard
+  if (redirectTo && redirectTo.startsWith('/')) {
+    redirect(redirectTo)
+  } else {
+    redirect('/dashboard')
+  }
 }
 
 /**

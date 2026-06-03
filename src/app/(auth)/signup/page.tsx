@@ -4,10 +4,13 @@ import { useActionState, Suspense } from 'react'
 import { signUpWithOwner } from '@/app/actions/auth'
 import { User, Mail, Lock, Building, Loader2, Sparkles, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 const inputClass = "block w-full pl-10 pr-4 py-3 bg-[#FFFFFF] border border-[#E4E4E7] text-[#09090B] placeholder-[#71717A] focus:outline-none focus:border-[#09090B] transition-colors text-sm disabled:opacity-50"
 
 function SignupForm() {
+  const searchParams = useSearchParams()
+  const redirectParam = searchParams.get('redirect')
   const [state, formAction, isPending] = useActionState(signUpWithOwner, {})
 
   const fields = [
@@ -20,6 +23,7 @@ function SignupForm() {
   return (
     <div className="bg-[#FAFAFA] border border-[#E4E4E7] p-8">
       <form action={formAction} className="space-y-6">
+        <input type="hidden" name="redirect" value={redirectParam || ''} />
         {state.error && (
           <div className="flex items-start gap-3 bg-[#FFFFFF] border border-red-500 p-4 text-sm text-red-500 animate-in fade-in duration-200">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -53,7 +57,7 @@ function SignupForm() {
 
       <div className="mt-6 text-center text-sm text-[#71717A] font-medium">
         Already have an account?{' '}
-        <Link href="/login" className="text-[#09090B] hover:underline font-bold transition-colors">
+        <Link href={`/login${redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''}`} className="text-[#09090B] hover:underline font-bold transition-colors">
           Sign In
         </Link>
       </div>

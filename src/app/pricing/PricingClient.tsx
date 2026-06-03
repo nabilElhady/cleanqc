@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 interface PricingClientProps {
   isAuthenticated: boolean
@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-export function PricingClient({
+function PricingClientInner({
   isAuthenticated,
   userRole,
   features,
@@ -27,6 +27,7 @@ export function PricingClient({
   paddleEnv,
 }: PricingClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -47,7 +48,8 @@ export function PricingClient({
     setErrorMsg(null)
 
     if (!isAuthenticated) {
-      router.push('/login?redirect=/pricing')
+      // Redirect to login page and pass pricing page with auto-trigger parameter as target
+      router.push('/login?redirect=/pricing?trigger=checkout')
       return
     }
 
@@ -85,6 +87,22 @@ export function PricingClient({
       setLoading(false)
     }
   }
+
+  // Automatically trigger subscribe if trigger query param is set (coming back after login redirection)
+  useEffect(() => {
+    const trigger = searchParams.get('trigger')
+    if (trigger === 'checkout' && isAuthenticated && userRole === 'owner') {
+      // Remove trigger param from the URL right away to avoid duplicate trigger on reload
+      const newParams = new URLSearchParams(window.location.search)
+      newParams.delete('trigger')
+      const searchString = newParams.toString()
+      const cleanPath = window.location.pathname + (searchString ? `?${searchString}` : '')
+      router.replace(cleanPath)
+
+      // Execute payment creation
+      handleSubscribe()
+    }
+  }, [searchParams, isAuthenticated, userRole])
 
   return (
     <div className="bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex flex-col justify-between w-full min-h-[500px]">
@@ -138,5 +156,19 @@ export function PricingClient({
         </button>
       </div>
     </div>
+  )
+}
+
+export function PricingClient(props: PricingClientProps) {
+  return (
+    <Suspense fallback={
+      <div className="w-full bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex items-center justify-center min-h-[500px]">
+        <span className="font-mono text-xs uppercase tracking-widest text-zinc-500 font-bold">
+          Loading checkout system...
+        </span>
+      </div>
+    }>
+      <PricingClientInner {...props} />
+    </Suspense>
   )
 }
