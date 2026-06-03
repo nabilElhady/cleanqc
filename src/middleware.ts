@@ -79,11 +79,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated user away from login page
+  // Redirect authenticated user away from login page to their specific dashboard
   if (request.nextUrl.pathname.startsWith('/login')) {
     if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, is_superadmin')
+        .eq('id', user.id)
+        .single()
+
       const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
+      if (profile?.is_superadmin === true) {
+        url.pathname = '/admin'
+      } else if (profile?.role === 'crew') {
+        url.pathname = '/crew/jobs'
+      } else {
+        url.pathname = '/dashboard'
+      }
       return NextResponse.redirect(url)
     }
   }

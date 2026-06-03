@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,8 +38,16 @@ export default async function AdminLayout({
             System Overseer
           </h1>
         </div>
-        <div className="font-mono text-xs uppercase tracking-wider px-2 py-1 border border-[#09090B]">
-          Admin Access Active
+        <div className="flex items-center space-x-3">
+          <Link
+            href="/dashboard"
+            className="font-mono text-xs uppercase tracking-wider px-3 py-1.5 border border-[#09090B] hover:bg-[#09090B] hover:text-white transition-colors duration-150 font-bold rounded-none"
+          >
+            Exit to Dashboard
+          </Link>
+          <div className="font-mono text-xs uppercase tracking-wider px-2 py-1 border border-[#09090B] bg-[#09090B] text-white">
+            Admin Access Active
+          </div>
         </div>
       </header>
       

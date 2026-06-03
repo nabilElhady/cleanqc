@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileText, Briefcase, Users, Menu, LogOut, Smartphone, Square, CreditCard, Zap } from 'lucide-react'
+import { LayoutDashboard, FileText, Briefcase, Users, Menu, LogOut, Smartphone, Square, CreditCard, Zap, Shield } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { signOut } from '@/app/actions/auth'
 
@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
   { name: 'Crew Portal', href: '/crew/jobs', icon: Smartphone },
 ]
 
-export default function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
+export default function DashboardLayoutClient({ children, isAdmin }: { children: React.ReactNode; isAdmin?: boolean }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
@@ -38,6 +38,19 @@ export default function DashboardLayoutClient({ children }: { children: React.Re
           CleanQC
         </span>
       </div>
+
+      {/* Admin Portal Toggle */}
+      {isAdmin && (
+        <div className="px-4 pt-4 pb-0">
+          <Link
+            href="/admin"
+            className="flex items-center justify-center gap-2 w-full py-2.5 border border-[#09090B] bg-[#09090B] text-white hover:bg-white hover:text-[#09090B] transition-colors duration-200 font-mono text-[10px] font-bold uppercase tracking-widest rounded-none"
+          >
+            <Shield className="h-3.5 w-3.5" />
+            <span>Admin Portal</span>
+          </Link>
+        </div>
+      )}
 
       {/* Nav Links */}
       <nav className="flex-1 px-4 py-6 space-y-1">

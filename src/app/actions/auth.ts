@@ -51,18 +51,21 @@ export async function signInWithPassword(
     return { error: error?.message || 'Invalid email or password.' }
   }
 
-  // Resolve role from user profile
+  // Resolve role and superadmin state from user profile
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, is_superadmin')
     .eq('id', authData.user.id)
     .single()
 
   const userRole = profile?.role
+  const isSuperadmin = profile?.is_superadmin === true
 
   // Perform role-based server-side redirect
   if (redirectTo && redirectTo.startsWith('/')) {
     redirect(redirectTo)
+  } else if (isSuperadmin) {
+    redirect('/admin')
   } else if (userRole === 'crew') {
     redirect('/crew/jobs')
   } else {
