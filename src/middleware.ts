@@ -54,19 +54,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    const db = createAdminClient()
+    const { data: profile } = await db
+      .from('profiles')
+      .select('org_id, role, is_superadmin, suspended_at')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.suspended_at) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/suspended'
+      return NextResponse.redirect(url)
+    }
+
     // 2. Gate premium features: templates, jobs, team
     const premiumPaths = ['/templates', '/jobs', '/team']
     const isPremiumPath = premiumPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
     if (isPremiumPath) {
-      // Use admin client — bypasses RLS so org_id/role are never null
-      const db = createAdminClient()
-      const { data: profile } = await db
-        .from('profiles')
-        .select('org_id, role, is_superadmin')
-        .eq('id', user.id)
-        .single()
-
       let isPremiumActive = false
 
       if (profile?.is_superadmin === true || profile?.role === 'owner') {
@@ -99,9 +104,15 @@ export async function middleware(request: NextRequest) {
       const db = createAdminClient()
       const { data: profile } = await db
         .from('profiles')
-        .select('role, is_superadmin')
+        .select('role, is_superadmin, suspended_at')
         .eq('id', user.id)
         .single()
+
+      if (profile?.suspended_at) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/suspended'
+        return NextResponse.redirect(url)
+      }
 
       const url = request.nextUrl.clone()
       if (profile?.is_superadmin === true) {

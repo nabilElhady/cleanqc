@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "The modern, role-based quality control and dispatching platform for property managers and cleaning crew.",
 };
 
+import MaintenanceBanner from '@/components/MaintenanceBanner'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,6 +32,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground relative overflow-x-hidden">
+        <MaintenanceBanner />
         <CheckoutCallbackTracker />
         {children}
       </body>
