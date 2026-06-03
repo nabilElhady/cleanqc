@@ -8,10 +8,10 @@ import DashboardLayoutClient from './DashboardLayoutClient'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { subscriptionStatus } = await getSubscriptionServer()
+  const { subscriptionStatus, isAdmin } = await getSubscriptionServer()
 
   return (
-    <SubscriptionProvider initialStatus={subscriptionStatus}>
+    <SubscriptionProvider initialStatus={subscriptionStatus} isAdmin={isAdmin}>
       <div className="flex flex-col min-h-screen">
         <ReadOnlyBanner />
         <DashboardLayoutClient>

@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileText, Briefcase, Users, Menu, LogOut, Smartphone, Square, CreditCard } from 'lucide-react'
+import { LayoutDashboard, FileText, Briefcase, Users, Menu, LogOut, Smartphone, Square, CreditCard, Zap } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { signOut } from '@/app/actions/auth'
 
@@ -15,6 +15,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Dispatch', href: '/dashboard/dispatch', icon: Zap },
   { name: 'Templates', href: '/templates', icon: FileText },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Team', href: '/team', icon: Users },

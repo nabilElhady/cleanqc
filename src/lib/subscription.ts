@@ -12,20 +12,24 @@ export async function getSubscriptionServer() {
       subscriptionStatus: null,
       isPremium: false,
       isReadOnly: true,
+      isAdmin: false,
     }
   }
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('org_id')
+    .select('org_id, is_superadmin')
     .eq('id', user.id)
     .single()
+
+  const isAdmin = !!profile?.is_superadmin
 
   if (!profile?.org_id) {
     return {
       subscriptionStatus: null,
-      isPremium: false,
-      isReadOnly: true,
+      isPremium: isAdmin,
+      isReadOnly: !isAdmin,
+      isAdmin,
     }
   }
 
@@ -36,18 +40,19 @@ export async function getSubscriptionServer() {
     .single()
 
   const subscriptionStatus = org?.subscription_status || null
-  const isPremium = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+  const isPremium = subscriptionStatus === 'active' || subscriptionStatus === 'trialing' || isAdmin
   const isReadOnly = !isPremium
 
   return {
     subscriptionStatus,
     isPremium,
     isReadOnly,
+    isAdmin,
   }
 }
 
 /**
- * Asserts that the current user belongs to an active premium organization.
+ * Asserts that the current user belongs to an active premium organization or is an admin.
  * Throws a strict 403 error if the check fails.
  */
 export async function assertPremiumServer() {
