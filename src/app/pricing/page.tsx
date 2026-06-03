@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import Script from 'next/script'
 import { PricingClient } from './PricingClient'
 
 export const dynamic = 'force-dynamic'
@@ -43,10 +42,6 @@ export default async function PricingPage() {
 
   return (
     <>
-      <Script
-        src="https://cdn.paddle.com/paddle/v2/paddle.js"
-        strategy="beforeInteractive"
-      />
       <main className="min-h-screen bg-[#FAFAFA] py-20 px-4 md:px-8 flex flex-col items-center justify-center font-sans text-[#09090B]">
         {/* Navigation / Header */}
         <div className="absolute top-8 left-8">

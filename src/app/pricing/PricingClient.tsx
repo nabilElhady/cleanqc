@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { initializePaddle, Paddle } from '@paddle/paddle-js'
 
 interface PricingClientProps {
   isAuthenticated: boolean
@@ -11,12 +12,6 @@ interface PricingClientProps {
   paddleClientToken: string
   paddlePriceId: string
   paddleEnv: string
-}
-
-declare global {
-  interface Window {
-    Paddle?: any;
-  }
 }
 
 function PricingClientInner({
@@ -29,19 +24,31 @@ function PricingClientInner({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(true)
+  const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Initialize Paddle.js
+  // Initialize Paddle.js using official loader
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.Paddle) {
-      window.Paddle.Environment.set(paddleEnv === 'sandbox' ? 'sandbox' : 'production')
-      window.Paddle.Initialize({
-        token: paddleClientToken,
-        eventCallback: function(data: any) {
-          console.log('Paddle Event:', data)
+    setInitializing(true)
+    initializePaddle({
+      environment: paddleEnv === 'sandbox' ? 'sandbox' : 'production',
+      token: paddleClientToken,
+      eventCallback: function(data: any) {
+        console.log('Paddle Event:', data)
+      }
+    })
+      .then((paddleInstance) => {
+        if (paddleInstance) {
+          setPaddle(paddleInstance)
         }
+        setInitializing(false)
       })
-    }
+      .catch((err) => {
+        console.error('Error initializing Paddle:', err)
+        setErrorMsg('Failed to load the billing module. Please refresh the page.')
+        setInitializing(false)
+      })
   }, [paddleClientToken, paddleEnv])
 
   const handleSubscribe = async () => {
@@ -55,6 +62,11 @@ function PricingClientInner({
 
     if (userRole !== 'owner') {
       setErrorMsg('Only organization owners can subscribe to billing.')
+      return
+    }
+
+    if (!paddle) {
+      setErrorMsg('Billing engine is still loading. Please try again in a moment.')
       return
     }
 
@@ -74,11 +86,17 @@ function PricingClientInner({
         throw new Error(data.error || 'Failed to initiate checkout.')
       }
 
-      if (data.checkoutUrl) {
-        // Redirection to Paddle Hosted Checkout
-        window.location.href = data.checkoutUrl
+      if (data.transactionId) {
+        // Open the Paddle checkout as overlay
+        paddle.Checkout.open({
+          transactionId: data.transactionId,
+          settings: {
+            displayMode: 'overlay',
+            theme: 'light',
+          }
+        })
       } else {
-        throw new Error('No checkout URL received from server.')
+        throw new Error('No transaction ID received from server.')
       }
     } catch (err: any) {
       console.error('Checkout error:', err)
@@ -91,7 +109,7 @@ function PricingClientInner({
   // Automatically trigger subscribe if trigger query param is set (coming back after login redirection)
   useEffect(() => {
     const trigger = searchParams.get('trigger')
-    if (trigger === 'checkout' && isAuthenticated && userRole === 'owner') {
+    if (trigger === 'checkout' && isAuthenticated && userRole === 'owner' && paddle && !initializing) {
       // Remove trigger param from the URL right away to avoid duplicate trigger on reload
       const newParams = new URLSearchParams(window.location.search)
       newParams.delete('trigger')
@@ -102,7 +120,13 @@ function PricingClientInner({
       // Execute payment creation
       handleSubscribe()
     }
-  }, [searchParams, isAuthenticated, userRole])
+  }, [searchParams, isAuthenticated, userRole, paddle, initializing])
+
+  const getButtonText = () => {
+    if (initializing) return 'Initializing Billing Engine...'
+    if (loading) return 'Processing...'
+    return 'Subscribe Now'
+  }
 
   return (
     <div className="bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex flex-col justify-between w-full min-h-[500px]">
@@ -149,10 +173,10 @@ function PricingClientInner({
 
         <button
           onClick={handleSubscribe}
-          disabled={loading}
-          className="w-full bg-[#09090B] text-white hover:bg-zinc-800 disabled:bg-zinc-400 py-4 px-6 font-mono text-sm uppercase tracking-wider font-bold transition-all duration-150 flex items-center justify-center border border-[#09090B] shadow-[2px_2px_0px_#FFFFFF] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+          disabled={initializing || loading}
+          className="w-full bg-[#09090B] text-white hover:bg-zinc-800 disabled:bg-zinc-400 py-4 px-6 font-mono text-sm uppercase tracking-wider font-bold transition-all duration-150 flex items-center justify-center border border-[#09090B] shadow-[2px_2px_0px_#FFFFFF] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer disabled:cursor-not-allowed"
         >
-          {loading ? 'Processing...' : 'Subscribe Now'}
+          {getButtonText()}
         </button>
       </div>
     </div>

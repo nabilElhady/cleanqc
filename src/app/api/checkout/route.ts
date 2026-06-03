@@ -80,7 +80,7 @@ async function getCheckoutData() {
       checkoutUrl = `${checkoutUrl}${separator}customer_email=${encodeURIComponent(user.email)}`
     }
 
-    return { checkoutUrl, status: 200 }
+    return { checkoutUrl, transactionId: transaction.id, status: 200 }
   } catch (err: any) {
     console.error('Paddle transaction creation error:', err)
     return { error: err.message || 'Error generating Paddle transaction.', status: 500 }
@@ -94,7 +94,10 @@ export async function POST() {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
 
-  return NextResponse.json({ checkoutUrl: result.checkoutUrl })
+  return NextResponse.json({ 
+    checkoutUrl: result.checkoutUrl,
+    transactionId: result.transactionId
+  })
 }
 
 export async function GET() {
