@@ -28,9 +28,12 @@ export default async function CrewLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF] text-[#09090B] font-sans antialiased pb-12">
+    <div className="min-h-screen bg-[#FFFFFF] text-[#09090B] font-sans antialiased pb-12 relative">
+      {/* Crisp Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
+      
       {/* Mobile-optimized Top Navbar */}
-      <header className="sticky top-0 z-50 border-b border-[#E4E4E7] bg-[#FFFFFF]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#E4E4E7] bg-[#FFFFFF]/90 backdrop-blur-md relative z-10">
         <div className="max-w-lg mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/crew/jobs" className="flex items-center gap-3 group">
             <div className="h-8 w-8 bg-[#09090B] flex items-center justify-center">
@@ -72,7 +75,7 @@ export default async function CrewLayout({ children }: { children: React.ReactNo
       </header>
 
       {/* Main Content container limited to mobile view max width */}
-      <main className="max-w-lg mx-auto px-4 pt-6">
+      <main className="max-w-lg mx-auto px-4 pt-6 relative z-10">
         {children}
       </main>
     </div>

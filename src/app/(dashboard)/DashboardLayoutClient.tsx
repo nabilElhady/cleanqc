@@ -124,8 +124,10 @@ export default function DashboardLayoutClient({ children, isAdmin }: { children:
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background">
-        <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full">{children}</main>
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background relative">
+        {/* Crisp Grid Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
+        <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full relative z-10">{children}</main>
       </div>
     </div>
   )

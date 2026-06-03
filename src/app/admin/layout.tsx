@@ -29,9 +29,12 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#09090B] selection:bg-[#09090B] selection:text-white">
+    <div className="min-h-screen bg-white text-[#09090B] selection:bg-[#09090B] selection:text-white relative">
+      {/* Crisp Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
+      
       {/* Global Admin Header */}
-      <header className="border-b border-[#E4E4E7] px-8 py-4 flex items-center justify-between">
+      <header className="border-b border-[#E4E4E7] px-8 py-4 flex items-center justify-between relative z-10 bg-white/90 backdrop-blur-sm">
         <div className="flex items-center space-x-4">
           <div className="w-4 h-4 bg-[#09090B]"></div>
           <h1 className="font-mono text-sm tracking-widest uppercase font-bold">
@@ -51,7 +54,7 @@ export default async function AdminLayout({
         </div>
       </header>
       
-      <main className="p-8 max-w-7xl mx-auto">
+      <main className="p-8 max-w-7xl mx-auto relative z-10">
         {children}
       </main>
     </div>
