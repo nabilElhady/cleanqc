@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -16,8 +17,9 @@ export default async function AdminLayout({
     redirect('/login')
   }
 
-  // Fetch the user's role
-  const { data: profile } = await supabase
+  // Use admin client so RLS never blocks reading is_superadmin
+  const db = createAdminClient()
+  const { data: profile } = await db
     .from('profiles')
     .select('is_superadmin')
     .eq('id', user.id)

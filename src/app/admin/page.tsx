@@ -1,13 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // Force dynamic rendering to ensure fresh data on load
 export const dynamic = 'force-dynamic' 
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
+  const db = createAdminClient()
 
-  // Fetch all organizations globally
-  const { data: organizations, error } = await supabase
+  // Fetch all organizations globally bypassing RLS
+  const { data: organizations, error } = await db
     .from('organizations')
     .select('id, name, paddle_subscription_id, subscription_status, created_at')
     .order('created_at', { ascending: false })
