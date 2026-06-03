@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileText, Briefcase, Users, Menu, LogOut, Smartphone, Square } from 'lucide-react'
+import { LayoutDashboard, FileText, Briefcase, Users, Menu, LogOut, Smartphone, Square, CreditCard } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { signOut } from '@/app/actions/auth'
 
@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { name: 'Templates', href: '/templates', icon: FileText },
   { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Team', href: '/team', icon: Users },
+  { name: 'Billing', href: '/pricing', icon: CreditCard },
   { name: 'Crew Portal', href: '/crew/jobs', icon: Smartphone },
 ]
 

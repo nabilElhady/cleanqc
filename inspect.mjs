@@ -1,1 +1,1 @@
-// Deleted temporary inspection script.
+// Temporary database inspection script removed.

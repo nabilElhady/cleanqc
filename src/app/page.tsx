@@ -94,6 +94,7 @@ export default function Home() {
           <nav className="hidden md:flex items-center gap-8">
             <NavLink href="#features">Features</NavLink>
             <NavLink href="#security">Security</NavLink>
+            <NavLink href="/pricing">Pricing</NavLink>
           </nav>
 
           <div className="flex items-center gap-6">
