@@ -1,0 +1,4 @@
+{
+  "data": null,
+  "error": "Could not find the function public.run_sql(sql) in the schema cache"
+}
