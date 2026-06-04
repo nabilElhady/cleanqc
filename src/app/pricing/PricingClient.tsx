@@ -31,38 +31,7 @@ function PricingClientInner({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const errorParam = searchParams.get('error')
 
-  const [isDev, setIsDev] = useState(false)
 
-  useEffect(() => {
-    if (
-      process.env.NODE_ENV === 'development' ||
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    ) {
-      setIsDev(true)
-    }
-  }, [])
-
-  const handleDevActivate = async () => {
-    setErrorMsg(null)
-    setLoading(true)
-    try {
-      const response = await fetch('/api/dev/activate', {
-        method: 'POST',
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to activate subscription.')
-      }
-      router.refresh()
-      window.location.reload()
-    } catch (err: any) {
-      console.error('Dev activation failed:', err)
-      setErrorMsg(err.message || 'Failed to activate subscription.')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // Initialize Paddle.js using official loader
   useEffect(() => {
@@ -263,21 +232,7 @@ function PricingClientInner({
           {getButtonText()}
         </button>
 
-        {isDev && (
-          <div className="mt-4 p-4 border border-dashed border-amber-300 bg-amber-50 text-amber-900 rounded-none text-xs font-mono">
-            <p className="font-bold mb-2">🛠️ DEV MODE SHORTCUT</p>
-            <p className="mb-3 text-[11px] leading-relaxed text-zinc-700 font-sans">
-              Paddle Sandbox webhooks require a public URL (like ngrok). In local dev, click below to activate your premium subscription instantly in Supabase.
-            </p>
-            <button
-              onClick={handleDevActivate}
-              disabled={loading}
-              className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-zinc-400 text-white py-2.5 px-3 uppercase tracking-wider font-bold transition-all duration-150 text-[10px] cursor-pointer font-sans"
-            >
-              Activate Premium Instantly
-            </button>
-          </div>
-        )}
+
       </div>
     </div>
   )

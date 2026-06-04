@@ -67,14 +67,21 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // Redirect crew members trying to access manager dashboard/admin routes
+    if (profile?.role === 'crew' || user.user_metadata?.role === 'crew') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/crew/jobs'
+      return NextResponse.redirect(url)
+    }
+
     // 2. Gate premium features: templates, jobs, team
-    const premiumPaths = ['/templates', '/jobs', '/team']
+    const premiumPaths = ['/templates', '/jobs', '/team', '/dashboard/team']
     const isPremiumPath = premiumPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
     if (isPremiumPath) {
       let isPremiumActive = false
 
-      if (profile?.is_superadmin === true || profile?.role === 'owner') {
+      if (profile?.is_superadmin === true) {
         isPremiumActive = true
       } else if (profile?.org_id) {
         const { data: org } = await db
@@ -90,7 +97,7 @@ export async function middleware(request: NextRequest) {
 
       if (!isPremiumActive) {
         const url = request.nextUrl.clone()
-        url.pathname = '/pricing'
+        url.pathname = '/dashboard/billing'
         url.searchParams.set('error', 'This feature requires an active premium subscription.')
         return NextResponse.redirect(url)
       }

@@ -13,6 +13,30 @@ function SignupForm() {
   const redirectParam = searchParams.get('redirect')
   const [state, formAction, isPending] = useActionState(signUpWithOwner, {})
 
+  if (state.success && state.needsConfirmation) {
+    return (
+      <div className="bg-[#FAFAFA] border border-[#E4E4E7] p-8 text-center space-y-6">
+        <div className="flex flex-col items-center">
+          <div className="h-12 w-12 bg-white border border-[#E4E4E7] flex items-center justify-center rounded-none shadow-[4px_4px_0px_#09090B] mb-4">
+            <Mail className="h-6 w-6 text-[#09090B] animate-pulse" />
+          </div>
+          <h3 className="text-lg font-black text-[#09090B] uppercase tracking-wider">Confirm Your Email</h3>
+          <p className="text-zinc-500 text-sm mt-3 leading-relaxed">
+            We've sent a verification link to your email address. Please click the link in that email to activate your account.
+          </p>
+        </div>
+        <div className="pt-4 border-t border-[#E4E4E7]">
+          <Link
+            href={`/login${redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''}`}
+            className="w-full h-12 flex items-center justify-center bg-[#09090B] hover:bg-[#09090B]/90 text-white font-bold text-[11px] uppercase tracking-widest transition-colors cursor-pointer"
+          >
+            Go to Sign In
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   const fields = [
     { id: 'name', label: 'Full Name', type: 'text', placeholder: 'John Doe', autoComplete: 'name', Icon: User },
     { id: 'orgName', label: 'Organization Name', type: 'text', placeholder: 'e.g. Apex Cleaning Co.', autoComplete: 'organization', Icon: Building },

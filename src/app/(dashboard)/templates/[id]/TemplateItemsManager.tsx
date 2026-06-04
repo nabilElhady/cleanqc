@@ -67,21 +67,21 @@ function SortableItem({ id, label, requiresPhoto }: SortableItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 bg-zinc-900 border border-white/8 rounded-xl p-4 shadow-sm hover:border-zinc-800 transition-all select-none"
+      className="flex items-center gap-3 bg-white border-2 border-zinc-200 rounded-xl p-4 shadow-sm hover:border-zinc-300 hover:shadow-md transition-all duration-200 select-none"
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1.5 hover:bg-zinc-800 rounded text-zinc-500 hover:text-[#FAFAFA] transition-colors"
+        className="cursor-grab active:cursor-grabbing p-1.5 hover:bg-[#F4F4F5] rounded-lg text-[#71717A] hover:text-[#09090B] transition-colors"
       >
         <GripVertical className="h-5 w-5" />
       </button>
 
-      <span className="flex-1 text-sm font-medium text-white">{label}</span>
+      <span className="flex-1 text-sm font-medium text-[#09090B]">{label}</span>
 
       {requiresPhoto && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 text-xs font-semibold text-[#8B5CF6]">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 text-xs font-semibold text-[#8B5CF6]">
           <Camera className="h-3.5 w-3.5" />
           Photo required
         </span>
@@ -174,9 +174,9 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
       {/* Items List (Left / Large Span) */}
       <div className="lg:col-span-2 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight text-white">Checklist Items</h2>
-          <span className="text-sm text-zinc-500 bg-zinc-900 border border-white/8 px-3 py-1 rounded-full font-medium">
-            {items.length} {items.length === 1 ? 'item' : 'items'}
+          <h2 className="text-xl font-bold tracking-tight text-[#09090B]">Checklist Tasks</h2>
+          <span className="text-sm text-[#71717A] bg-white border border-[#E4E4E7] px-3 py-1 rounded-full font-medium">
+            {items.length} {items.length === 1 ? 'task' : 'tasks'}
           </span>
         </div>
 
@@ -191,8 +191,8 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
         )}
 
         {items.length === 0 ? (
-          <div className="backdrop-blur-xl bg-zinc-900/10 border border-white/8 border-dashed rounded-xl p-12 text-center text-zinc-500">
-            No items in this template yet. Use the form on the right to start building.
+          <div className="bg-white border border-[#E4E4E7] border-dashed rounded-xl p-12 text-center text-[#71717A]">
+            No tasks in this checklist yet. Use the form on the right to start building.
           </div>
         ) : (
           <DndContext
@@ -221,16 +221,13 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
 
       {/* Add Item Form (Right Side) */}
       <div>
-        <Card className="sticky top-24">
-          <CardHeader>
-            <CardTitle className="text-lg">Add Checklist Item</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAddItem} className="space-y-4">
-              <div>
-                <label htmlFor="label" className="block text-sm font-medium text-zinc-300 mb-1.5">
-                  Item Label / Task Instruction
-                </label>
+        <div className="sticky top-24 bg-white border-2 border-zinc-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-[#09090B] mb-4">Add Checklist Task</h3>
+          <form onSubmit={handleAddItem} className="space-y-4">
+            <div>
+              <label htmlFor="label" className="block text-xs font-bold uppercase tracking-wider text-[#71717A] mb-2">
+                Task Instruction
+              </label>
                 <Input
                   id="label"
                   type="text"
@@ -242,37 +239,36 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
                 />
               </div>
 
-              {/* Requires Photo Toggle */}
-              <div className="flex items-center justify-between border border-white/8 bg-[#18181B] p-4 rounded-xl">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-white">Require Photo</span>
-                  <span className="text-xs text-zinc-500">Staff must upload an image to complete this task</span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={requiresPhoto}
-                    onChange={(e) => setRequiresPhoto(e.target.checked)}
-                    disabled={isAdding}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8B5CF6]"></div>
-                </label>
+            {/* Requires Photo Toggle */}
+            <div className="flex items-center justify-between border-2 border-zinc-200 bg-[#FAFAFA] p-4 rounded-xl">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-[#09090B]">Require Photo</span>
+                <span className="text-xs text-[#71717A]">Staff must upload an image to complete this task</span>
               </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={requiresPhoto}
+                  onChange={(e) => setRequiresPhoto(e.target.checked)}
+                  disabled={isAdding}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-[#E4E4E7] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8B5CF6]"></div>
+              </label>
+            </div>
 
-              <Button type="submit" disabled={isAdding} className="w-full justify-center cursor-pointer">
-                {isAdding ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            <Button type="submit" disabled={isAdding} className="w-full justify-center cursor-pointer bg-black text-white hover:bg-zinc-800 border border-transparent rounded-xl py-5 font-bold uppercase tracking-wider text-xs shadow-sm transition-all">
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Task
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   )

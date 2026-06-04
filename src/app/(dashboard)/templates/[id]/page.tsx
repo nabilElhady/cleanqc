@@ -46,7 +46,7 @@ export default async function TemplateDetailsPage({ params }: TemplateDetailsPag
   const templateItems = itemsError ? [] : items || []
 
   return (
-    <div className="space-y-8 text-white relative">
+    <div className="space-y-8 text-[#09090B] relative">
       {/* Back button & Header */}
       <div className="space-y-4">
         <Button asChild variant="outline" className="cursor-pointer">
@@ -59,13 +59,13 @@ export default async function TemplateDetailsPage({ params }: TemplateDetailsPag
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-zinc-500 font-medium text-sm">Template Builder</span>
+              <span className="text-zinc-500 font-medium text-sm">Checklist Builder</span>
               <span className="h-1.5 w-1.5 rounded-full bg-[#8B5CF6]" />
-              <span className="text-zinc-400 font-medium text-sm">Organize Items</span>
+              <span className="text-zinc-500 font-medium text-sm">Organize Tasks</span>
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1">{template.name}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight mt-1 text-[#09090B]">{template.name}</h1>
             {template.description && (
-              <p className="text-zinc-400 mt-2 text-sm leading-relaxed max-w-2xl">
+              <p className="text-zinc-600 mt-2 text-sm leading-relaxed max-w-2xl">
                 {template.description}
               </p>
             )}
@@ -73,7 +73,7 @@ export default async function TemplateDetailsPage({ params }: TemplateDetailsPag
         </div>
       </div>
 
-      <div className="border-t border-white/8 pt-6">
+      <div className="border-t border-[#E4E4E7] pt-6">
         <TemplateItemsManager templateId={id} initialItems={templateItems} />
       </div>
     </div>

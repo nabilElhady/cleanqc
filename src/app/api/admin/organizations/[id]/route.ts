@@ -82,12 +82,47 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     .eq('org_id', id)
 
   if (members && members.length > 0) {
+    const memberIds = members.map(m => m.id)
+    // Clear jobs assigned to any of these members
+    await db.from('jobs').update({ assigned_to: null }).in('assigned_to', memberIds)
+    // Clear audit logs created by any of these members
+    await db.from('admin_audit_log').update({ admin_id: null }).in('admin_id', memberIds)
+
     for (const member of members) {
       if (member.id !== user.id) { // Don't delete the caller if they happen to be in the org
         await db.auth.admin.deleteUser(member.id)
       }
     }
   }
+
+  // If the caller belongs to this organization, we must move them to a new organization
+  // because org_id has a NOT NULL constraint on profiles.
+  const callerInOrg = members?.some(m => m.id === user.id)
+  if (callerInOrg) {
+    const { data: newOrg } = await db
+      .from('organizations')
+      .insert({
+        name: 'System Admin Org',
+        slug: 'system-admin-org-' + Math.random().toString(36).substring(7),
+        subscription_status: 'active'
+      })
+      .select('id')
+      .single()
+
+    if (newOrg) {
+      await db.from('profiles').update({ org_id: newOrg.id }).eq('id', user.id)
+    }
+  }
+  
+  // Fetch job IDs to delete their responses first
+  const { data: orgJobs } = await db.from('jobs').select('id').eq('org_id', id)
+  const jobIds = orgJobs?.map(j => j.id) || []
+  if (jobIds.length > 0) {
+    await db.from('job_responses').delete().in('job_id', jobIds)
+  }
+
+  // Clean up jobs for this org to prevent constraint errors
+  await db.from('jobs').delete().eq('org_id', id)
 
   // Delete org (cascades to remaining profile rows, jobs, etc. based on foreign keys)
   const { error: deleteError } = await db

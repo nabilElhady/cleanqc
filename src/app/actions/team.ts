@@ -34,8 +34,9 @@ export async function inviteCrewMember(
       return { success: false, error: 'Unauthorized' }
     }
 
-    // Resolve manager profile to get their organization ID and role
-    const { data: managerProfile, error: profileError } = await supabase
+    // Resolve manager profile to get their organization ID and role via admin client
+    const supabaseAdmin = createAdminClient()
+    const { data: managerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('org_id, role')
       .eq('id', currentUser.id)
@@ -48,8 +49,6 @@ export async function inviteCrewMember(
     if (managerProfile.role !== 'owner' && managerProfile.role !== 'manager') {
       return { success: false, error: 'Only managers can invite crew members.' }
     }
-
-    const supabaseAdmin = createAdminClient()
 
     // 1. Create the user in Auth with confirmed email and password
     const { data: authUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
@@ -113,8 +112,10 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
       return { success: false, error: 'You cannot delete yourself.' }
     }
 
+    const supabaseAdmin = createAdminClient()
+
     // Resolve caller's profile to get organization context and verify they are owner/manager
-    const { data: callerProfile, error: profileError } = await supabase
+    const { data: callerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('org_id, role')
       .eq('id', currentUser.id)
@@ -124,12 +125,13 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
       return { success: false, error: 'Could not retrieve organization ID.' }
     }
 
-    if (callerProfile.role !== 'owner' && callerProfile.role !== 'manager') {
-      return { success: false, error: 'Only administrators or owners can delete team members.' }
+    const allowedCallerRoles = ['owner', 'manager', 'admin', 'captain']
+    if (!allowedCallerRoles.includes(callerProfile.role)) {
+      return { success: false, error: 'Only administrators, captains, or owners can delete team members.' }
     }
 
     // Verify target profile is in the same organization
-    const { data: targetProfile, error: targetError } = await supabase
+    const { data: targetProfile, error: targetError } = await supabaseAdmin
       .from('profiles')
       .select('org_id, role')
       .eq('id', crewMemberId)
@@ -148,10 +150,13 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
       return { success: false, error: 'The organization owner cannot be deleted.' }
     }
 
-    const supabaseAdmin = createAdminClient()
+    // Managers/captains/admins can only delete crew members (they cannot delete other managers/captains/admins)
+    if (callerProfile.role !== 'owner' && targetProfile.role !== 'crew') {
+      return { success: false, error: 'Access denied. You are only authorized to delete crew members.' }
+    }
 
     // 1. Unassign the crew member from any jobs in this organization
-    const { error: updateJobsError } = await supabase
+    const { error: updateJobsError } = await supabaseAdmin
       .from('jobs')
       .update({ assigned_to: null })
       .eq('assigned_to', crewMemberId)

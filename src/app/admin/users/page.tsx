@@ -41,7 +41,10 @@ export default function AdminUsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suspend: !isSuspended }),
       })
-      if (!res.ok) throw new Error('Failed to toggle suspend status')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to toggle suspend status')
+      }
       fetchUsers()
     } catch (err: any) {
       alert(err.message)
@@ -55,7 +58,10 @@ export default function AdminUsersPage() {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
       })
-      if (!res.ok) throw new Error('Failed to delete user')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete user')
+      }
       fetchUsers()
     } catch (err: any) {
       alert(err.message)
@@ -69,7 +75,10 @@ export default function AdminUsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       })
-      if (!res.ok) throw new Error('Failed to change role')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to change role')
+      }
       fetchUsers()
     } catch (err: any) {
       alert(err.message)
@@ -83,7 +92,10 @@ export default function AdminUsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_superadmin: !isSuperadmin }),
       })
-      if (!res.ok) throw new Error('Failed to toggle superadmin')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to toggle superadmin')
+      }
       fetchUsers()
     } catch (err: any) {
       alert(err.message)

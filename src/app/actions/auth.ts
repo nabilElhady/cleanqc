@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 export type FormState = {
   success?: boolean
   error?: string
+  needsConfirmation?: boolean
 }
 
 /**
@@ -132,28 +133,43 @@ export async function signUpWithOwner(
 
   const userId = authData.user.id
 
+  // Use the admin client to bypass RLS during registration setup
+  const adminDb = createAdminClient()
+
+  const baseSlug = orgName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+  const slug = `${baseSlug || 'org'}-${Math.random().toString(36).substring(2, 8)}`
+
   // 2. Create the Organization
-  const { data: orgData, error: orgError } = await supabase
+  const { data: orgData, error: orgError } = await adminDb
     .from('organizations')
-    .insert({ name: orgName.trim() })
+    .insert({ 
+      name: orgName.trim(),
+      slug
+    })
     .select('id')
     .single()
 
   if (orgError || !orgData) {
+    // Rollback Auth user to prevent orphaned auth record
+    await adminDb.auth.admin.deleteUser(userId)
     return { error: orgError?.message || 'Failed to create organization.' }
   }
 
   const orgId = orgData.id
 
-  // 3. Create/Update Profile with RLS considerations
-  const { data: existingProfile } = await supabase
+  // 3. Create/Update Profile
+  const { data: existingProfile } = await adminDb
     .from('profiles')
     .select('id')
     .eq('id', userId)
     .single()
 
   if (existingProfile) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminDb
       .from('profiles')
       .update({
         org_id: orgId,
@@ -163,10 +179,13 @@ export async function signUpWithOwner(
       .eq('id', userId)
 
     if (updateError) {
+      // Rollback org and auth user
+      await adminDb.from('organizations').delete().eq('id', orgId)
+      await adminDb.auth.admin.deleteUser(userId)
       return { error: updateError.message }
     }
   } else {
-    const { error: insertError } = await supabase
+    const { error: insertError } = await adminDb
       .from('profiles')
       .insert({
         id: userId,
@@ -176,8 +195,16 @@ export async function signUpWithOwner(
       })
 
     if (insertError) {
+      // Rollback org and auth user
+      await adminDb.from('organizations').delete().eq('id', orgId)
+      await adminDb.auth.admin.deleteUser(userId)
       return { error: insertError.message }
     }
+  }
+
+  // If email confirmation is enabled, session will be null and the user must verify their email first
+  if (!authData.session) {
+    return { success: true, needsConfirmation: true }
   }
 
   // Redirect to redirect parameter or default dashboard

@@ -28,7 +28,7 @@ export async function getSubscriptionServer() {
 
   const isAdmin = !!profile?.is_superadmin
   const isOwner = profile?.role === 'owner'
-  const isPermitted = isAdmin || isOwner
+  const isPermitted = isAdmin
 
   if (!profile?.org_id) {
     return {

@@ -155,11 +155,12 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
                 .join('')
                 .toUpperCase()
 
-              const isOwnerOrManager = profile.role === 'owner' || profile.role === 'manager'
+              const isOwnerOrManager = profile.role === 'owner' || profile.role === 'manager' || profile.role === 'admin' || profile.role === 'captain'
               const canDelete = 
-                (currentUserRole === 'owner' || currentUserRole === 'manager') && 
-                profile.id !== currentUserId && 
-                profile.role !== 'owner'
+                // 1. Owner can delete anyone (except themselves)
+                (currentUserRole === 'owner' && profile.id !== currentUserId) ||
+                // 2. Managers/Admins/Captains can delete crew members
+                ((currentUserRole === 'manager' || currentUserRole === 'admin' || currentUserRole === 'captain') && profile.role === 'crew')
 
               return (
                 <motion.div key={profile.id} variants={cardVariants}>
@@ -212,7 +213,13 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
                                 {displayName}
                               </h3>
                               <span className="block text-[10px] text-[#71717A] uppercase tracking-widest font-bold mt-0.5">
-                                {profile.role === 'owner' ? 'Owner' : profile.role === 'manager' ? 'Administrator' : 'Cleaning Crew'}
+                                {profile.role === 'owner' 
+                                  ? 'Owner' 
+                                  : (profile.role === 'manager' || profile.role === 'admin') 
+                                    ? 'Administrator' 
+                                    : profile.role === 'captain' 
+                                      ? 'Captain' 
+                                      : 'Cleaning Crew'}
                               </span>
                             </div>
                           </div>

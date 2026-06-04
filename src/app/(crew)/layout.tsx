@@ -3,7 +3,7 @@ import { signOut } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { LogOut, Square, LayoutDashboard } from 'lucide-react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export const metadata = {
   title: 'CleanQC Crew Portal',
@@ -18,7 +18,8 @@ export default async function CrewLayout({ children }: { children: React.ReactNo
   let isManagerOrOwner = false
 
   if (user) {
-    const { data: profile } = await supabase
+    const db = createAdminClient()
+    const { data: profile } = await db
       .from('profiles')
       .select('role')
       .eq('id', user.id)

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
 import { assertPremiumServer } from '@/lib/subscription'
@@ -42,8 +42,9 @@ export async function createJob(
       return { success: false, error: 'Unauthorized. Please log in.' }
     }
 
-    // Resolve current user profile for role & organization context
-    const { data: profile, error: profileErr } = await supabase
+    // Resolve current user profile for role & organization context via admin client to bypass RLS recursion
+    const db = createAdminClient()
+    const { data: profile, error: profileErr } = await db
       .from('profiles')
       .select('org_id, role')
       .eq('id', user.id)
@@ -63,8 +64,8 @@ export async function createJob(
     if (customChecklist && customChecklist.items.length > 0) {
       const templateName = customChecklist.name?.trim() || `Ad-hoc: ${title.trim()}`
 
-      // 1. Create the checklist template
-      const { data: newTemplate, error: templateErr } = await supabase
+      // 1. Create the checklist template (admin client bypasses RLS)
+      const { data: newTemplate, error: templateErr } = await db
         .from('checklist_templates')
         .insert({
           name: templateName,
@@ -88,7 +89,7 @@ export async function createJob(
         sort_order: index + 1,
       }))
 
-      const { error: itemsErr } = await supabase
+      const { error: itemsErr } = await db
         .from('template_items')
         .insert(itemRows)
 
@@ -101,8 +102,8 @@ export async function createJob(
       return { success: false, error: 'Please select a template or build a custom checklist.' }
     }
 
-    // Create the Job dispatch
-    const { data, error } = await supabase
+    // Create the Job dispatch (admin client bypasses RLS)
+    const { data, error } = await db
       .from('jobs')
       .insert({
         title: title.trim(),

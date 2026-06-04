@@ -28,7 +28,7 @@ export function SubscriptionProvider({
 }) {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
 
-  const isPremium = initialStatus === 'active' || initialStatus === 'trialing' || isAdmin || isOwner
+  const isPremium = initialStatus === 'active' || initialStatus === 'trialing' || isAdmin
   const isReadOnly = !isPremium
 
   const openUpgradeModal = () => setIsUpgradeModalOpen(true)

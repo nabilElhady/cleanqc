@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
 import { assertPremiumServer } from '@/lib/subscription'
@@ -27,9 +27,8 @@ export async function submitJobResponse(
       return { success: false, error: 'Job ID and checklist responses are required.' }
     }
 
+    // Cookie-based client ONLY for auth identity
     const supabase = await createClient()
-
-    // 1. Authenticate user
     const {
       data: { user },
       error: authError,
@@ -39,8 +38,11 @@ export async function submitJobResponse(
       return { success: false, error: 'Unauthorized. Please log in.' }
     }
 
+    // Admin client for all DB operations — bypasses RLS
+    const db = createAdminClient()
+
     // 2. Fetch the job and verify assignment
-    const { data: job, error: jobErr } = await supabase
+    const { data: job, error: jobErr } = await db
       .from('jobs')
       .select('id, assigned_to, status')
       .eq('id', jobId)
@@ -69,7 +71,7 @@ export async function submitJobResponse(
     }))
 
     // 4. Insert response rows
-    const { error: insertErr } = await supabase
+    const { error: insertErr } = await db
       .from('job_responses')
       .insert(responseRows)
 
@@ -78,7 +80,7 @@ export async function submitJobResponse(
     }
 
     // 5. Update job status to completed
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await db
       .from('jobs')
       .update({
         status: 'completed',

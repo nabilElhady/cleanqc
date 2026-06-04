@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
-import { LayoutDashboard, Users, Building, Briefcase, FileText, Settings } from 'lucide-react'
+import AdminSidebar from '@/components/admin/AdminSidebar'
 import { headers } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
@@ -32,14 +32,6 @@ export default async function AdminLayout({
     redirect('/dashboard')
   }
 
-  const navLinks = [
-    { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-    { href: '/admin/users', label: 'Users', icon: Users },
-    { href: '/admin/organizations', label: 'Organizations', icon: Building },
-    { href: '/admin/jobs', label: 'Jobs Monitor', icon: Briefcase },
-    { href: '/admin/audit', label: 'Audit Log', icon: FileText },
-    { href: '/admin/settings', label: 'Settings', icon: Settings },
-  ]
 
   return (
     <div className="min-h-screen bg-white text-[#09090B] selection:bg-[#09090B] selection:text-white relative flex flex-col">
@@ -69,23 +61,7 @@ export default async function AdminLayout({
       
       <div className="flex flex-1 relative z-10 max-w-[1600px] w-full mx-auto">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-[#E4E4E7] bg-white/50 backdrop-blur-sm hidden md:block">
-          <nav className="p-4 space-y-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="flex items-center space-x-3 px-3 py-2 text-sm font-medium font-mono uppercase tracking-wider text-[#71717A] hover:bg-[#F4F4F5] hover:text-[#09090B] transition-colors rounded-none"
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{link.label}</span>
-                </Link>
-              )
-            })}
-          </nav>
-        </aside>
+        <AdminSidebar />
 
         {/* Main Content */}
         <main className="flex-1 p-8 overflow-y-auto">

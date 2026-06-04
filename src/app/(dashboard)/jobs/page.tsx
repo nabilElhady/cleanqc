@@ -79,8 +79,9 @@ export default async function JobsPage() {
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A] block mb-2">Operations</span>
           <h1 className="text-3xl font-black tracking-tight text-[#09090B] leading-none">
-            Job Dispatching
+            Job History
           </h1>
+          <p className="text-[#71717A] text-sm mt-2">All jobs sent to your crew — click any completed job to view the photo report.</p>
         </div>
         <div>
           <CreateJobForm templates={templatesList} crew={crewList} />

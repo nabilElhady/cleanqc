@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
 import Link from 'next/link'
 
@@ -9,7 +9,10 @@ async function getBillingDetails() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: profile } = await supabase
+  // Use admin client so RLS never blocks reading org_id
+  const db = createAdminClient()
+
+  const { data: profile } = await db
     .from('profiles')
     .select('org_id')
     .eq('id', user.id)
@@ -17,7 +20,7 @@ async function getBillingDetails() {
 
   if (!profile?.org_id) return null
 
-  const { data: org } = await supabase
+  const { data: org } = await db
     .from('organizations')
     .select('subscription_status, paddle_subscription_id')
     .eq('id', profile.org_id)

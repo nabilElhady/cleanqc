@@ -42,7 +42,7 @@ export function UpgradeModal() {
             Cancel
           </button>
           <a
-            href="/pricing"
+            href="/dashboard/billing"
             className="flex-1 bg-[#09090B] text-white hover:bg-zinc-800 py-3 px-4 font-mono text-xs uppercase tracking-widest font-bold transition-all duration-150 rounded-none flex items-center justify-center border border-[#09090B] cursor-pointer text-center"
           >
             Upgrade System

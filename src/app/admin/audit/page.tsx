@@ -7,7 +7,7 @@ export default async function AdminAuditPage() {
 
   const { data: logs, error } = await db
     .from('admin_audit_log')
-    .select('*, profiles:admin_id(email)')
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -44,7 +44,7 @@ export default async function AdminAuditPage() {
                   {new Date(log.created_at).toLocaleString()}
                 </td>
                 <td className="p-4 font-mono text-xs text-[#09090B]">
-                  {log.profiles ? (log.profiles as any).email : log.admin_id}
+                  {log.admin_id}
                 </td>
                 <td className="p-4">
                   <span className="font-mono text-xs uppercase bg-[#09090B] text-white px-2 py-1">

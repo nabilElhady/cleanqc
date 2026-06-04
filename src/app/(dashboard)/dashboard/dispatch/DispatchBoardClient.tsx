@@ -91,19 +91,22 @@ export function DispatchBoardClient({
 
   return (
     <div className="space-y-8 text-[#09090B]">
-      {/* Editorial Header */}
+      {/* Plain-English Header */}
       <div className="border-b border-[#E4E4E7] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#71717A] block mb-1">
-            System Control
+            Operations
           </span>
-          <h1 className="text-3xl font-black tracking-tight leading-none uppercase">
-            Live Dispatch Board
+          <h1 className="text-3xl font-black tracking-tight leading-none">
+            Send a Job
           </h1>
+          <p className="text-[#71717A] text-sm mt-2">
+            Fill in the form, assign a crew member, and the job appears live on the right.
+          </p>
         </div>
         <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-[#16A34A] bg-green-50/20 border border-green-600 px-3 py-1.5">
           <RefreshCw className="h-3 w-3 animate-spin" />
-          <span>Realtime WebSocket Active</span>
+          <span>Live Updates</span>
         </div>
       </div>
 
@@ -112,7 +115,7 @@ export function DispatchBoardClient({
         {/* Pane 1: Dispatch Job Form (Col span 4) */}
         <div className="lg:col-span-4 border border-[#E4E4E7] bg-white p-6 rounded-none space-y-6">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-[#09090B] pb-3 border-b border-[#E4E4E7]">
-            DISPATCH NEW JOB
+            Job Details
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -239,7 +242,7 @@ export function DispatchBoardClient({
         {/* Pane 2: Pending Dispatches (Col span 4) */}
         <div className="lg:col-span-4 border border-[#E4E4E7] bg-white p-6 rounded-none space-y-6">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-[#71717A] pb-3 border-b border-[#E4E4E7] flex items-center justify-between">
-            <span>PENDING DISPATCHES</span>
+            <span>Waiting to Start</span>
             <span className="bg-[#09090B] text-white px-2 py-0.5 text-[9px]">{pendingJobs.length}</span>
           </h2>
 
@@ -260,7 +263,7 @@ export function DispatchBoardClient({
                         ID: #{job.id.substring(0, 8)}
                       </span>
                       <span className="px-2 py-0.5 border border-zinc-300 text-zinc-600 font-mono text-[9px] uppercase font-bold">
-                        PENDING
+                        <span>PENDING</span>
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-[#09090B] uppercase tracking-wide mb-3">
@@ -306,7 +309,7 @@ export function DispatchBoardClient({
         {/* Pane 3: Active Operations (Col span 4) */}
         <div className="lg:col-span-4 border border-[#E4E4E7] bg-white p-6 rounded-none space-y-6">
           <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-[#09090B] pb-3 border-b border-[#E4E4E7] flex items-center justify-between">
-            <span>ACTIVE OPERATIONS</span>
+            <span>In Progress</span>
             <span className="bg-[#09090B] text-white px-2 py-0.5 text-[9px]">{activeJobs.length}</span>
           </h2>
 

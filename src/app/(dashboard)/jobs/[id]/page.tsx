@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -16,6 +16,7 @@ import {
   Navigation,
   ExternalLink,
 } from 'lucide-react'
+import DownloadReportButton from '@/components/DownloadReportButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,8 +37,9 @@ export default async function JobReviewPage({ params }: PageProps) {
     redirect('/login')
   }
 
-  // Resolve user profile for organization check
-  const { data: profile } = await supabase
+  // Use admin client so RLS never blocks reading org_id
+  const db = createAdminClient()
+  const { data: profile } = await db
     .from('profiles')
     .select('org_id, role')
     .eq('id', user.id)
@@ -191,10 +193,15 @@ export default async function JobReviewPage({ params }: PageProps) {
               Verification report and photo proof for the completed cleaning dispatch.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold border bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 w-fit">
-            <CheckCircle className="h-4 w-4" />
-            <span>Completed</span>
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold border bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 w-fit">
+              <CheckCircle className="h-4 w-4" />
+              <span>Completed</span>
+            </span>
+            {job.status === 'completed' && (
+              <DownloadReportButton jobId={job.id} />
+            )}
+          </div>
         </div>
       </div>
 

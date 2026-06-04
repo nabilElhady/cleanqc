@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CreateTemplateDialog } from './CreateTemplateDialog'
 import { TemplatesListClient } from './TemplatesListClient'
@@ -16,8 +16,9 @@ export default async function TemplatesPage() {
     redirect('/login')
   }
 
-  // Resolve user profile for isolation
-  const { data: profile } = await supabase
+  // Resolve user profile for isolation via admin client to bypass RLS recursion
+  const db = createAdminClient()
+  const { data: profile } = await db
     .from('profiles')
     .select('org_id')
     .eq('id', user.id)
@@ -26,7 +27,7 @@ export default async function TemplatesPage() {
   let templates: any[] = []
 
   if (profile?.org_id) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('checklist_templates')
       .select(`
         *,
@@ -47,9 +48,9 @@ export default async function TemplatesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#E4E4E7]">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">Management</span>
-          <h1 className="text-3xl font-black tracking-tight text-[#09090B] mt-1">Checklist Templates</h1>
+          <h1 className="text-3xl font-black tracking-tight text-[#09090B] mt-1">Checklists</h1>
           <p className="text-[#71717A] mt-1 text-sm">
-            Create and manage standardized quality control checklists.
+            Build the step-by-step task lists your cleaners follow at every job.
           </p>
         </div>
         <CreateTemplateDialog />

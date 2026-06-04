@@ -33,7 +33,10 @@ export default function AdminOrganizationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       })
-      if (!res.ok) throw new Error('Failed to update organization')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to update organization')
+      }
       fetchOrgs()
     } catch (err: any) {
       alert(err.message)
@@ -47,7 +50,10 @@ export default function AdminOrganizationsPage() {
       const res = await fetch(`/api/admin/organizations/${orgId}`, {
         method: 'DELETE',
       })
-      if (!res.ok) throw new Error('Failed to delete organization')
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete organization')
+      }
       fetchOrgs()
     } catch (err: any) {
       alert(err.message)

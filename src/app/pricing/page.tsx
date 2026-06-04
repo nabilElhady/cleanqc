@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { PricingClient } from './PricingClient'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +19,8 @@ export default async function PricingPage() {
   let subscriptionStatus: string | null = null
 
   if (user) {
-    const { data: profile } = await supabase
+    const db = createAdminClient()
+    const { data: profile } = await db
       .from('profiles')
       .select('org_id, role')
       .eq('id', user.id)
@@ -30,7 +31,7 @@ export default async function PricingPage() {
       orgId = profile.org_id
 
       if (profile.org_id) {
-        const { data: org } = await supabase
+        const { data: org } = await db
           .from('organizations')
           .select('subscription_status')
           .eq('id', profile.org_id)

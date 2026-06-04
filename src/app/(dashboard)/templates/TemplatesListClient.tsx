@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { FileText, ArrowRight, Calendar, Search } from 'lucide-react'
+import { FileText, ClipboardList, ArrowRight, Calendar, Search, Plus } from 'lucide-react'
 
 interface Template {
   id: string
@@ -68,7 +68,7 @@ export function TemplatesListClient({ initialTemplates }: TemplatesListClientPro
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A]" />
         <input
           type="text"
-          placeholder="Search templates..."
+          placeholder="Search your checklists..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-[#FFFFFF] border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder-[#71717A] focus:outline-none transition-colors duration-200"
@@ -84,12 +84,23 @@ export function TemplatesListClient({ initialTemplates }: TemplatesListClientPro
             className="bg-[#FFFFFF] border border-[#E4E4E7] p-12 text-center max-w-xl mx-auto flex flex-col items-center"
           >
             <div className="h-12 w-12 bg-[#FAFAFA] flex items-center justify-center mb-4 border border-[#E4E4E7]">
-              <FileText className="h-6 w-6 text-[#71717A]" />
+              <ClipboardList className="h-6 w-6 text-[#71717A]" />
             </div>
-            <h3 className="text-sm font-bold text-[#09090B] uppercase tracking-widest">No templates found</h3>
-            <p className="text-[#71717A] text-sm mt-2 leading-relaxed">
-              Try adjusting your search query or create a new template above.
+            <h3 className="text-sm font-bold text-[#09090B]">No checklists yet</h3>
+            <p className="text-[#71717A] text-sm mt-2 leading-relaxed max-w-xs">
+              {searchQuery
+                ? 'No checklists match your search. Try different keywords.'
+                : 'A checklist is a list of tasks your cleaner must complete — like "Mop floor", "Wipe counters", "Take photo of bathroom". Create one to get started.'}
             </p>
+            {!searchQuery && (
+              <button
+                onClick={() => document.getElementById('create-template-btn')?.click()}
+                className="mt-4 flex items-center gap-2 bg-[#09090B] text-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#27272A] transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Create Your First Checklist
+              </button>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -141,7 +152,7 @@ export function TemplatesListClient({ initialTemplates }: TemplatesListClientPro
                         href={`/templates/${template.id}`}
                         className="inline-flex w-full items-center justify-between px-4 py-2 border border-[#E4E4E7] bg-[#FAFAFA] hover:bg-[#09090B] hover:text-[#FFFFFF] text-[10px] font-bold uppercase tracking-widest text-[#09090B] transition-colors duration-200 cursor-pointer group/btn"
                       >
-                        <span>Manage Items</span>
+                        <span>Add &amp; Edit Tasks</span>
                         <ArrowRight className="h-3.5 w-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
                       </Link>
                     </div>

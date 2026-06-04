@@ -15,7 +15,7 @@ export function ReadOnlyBanner() {
     <div className="bg-[#09090B] text-white border-b border-[#E4E4E7] py-2 px-6 flex items-center justify-between text-xs font-mono tracking-wide relative z-40">
       <div className="flex-1 text-center pr-8">
         <span>READ-ONLY MODE: Your subscription is inactive. View historical data or </span>
-        <Link href="/pricing" className="underline font-bold hover:text-zinc-300 transition-colors uppercase ml-1">
+        <Link href="/dashboard/billing" className="underline font-bold hover:text-zinc-300 transition-colors uppercase ml-1">
           upgrade to resume operations
         </Link>
         <span>.</span>

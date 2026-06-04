@@ -96,7 +96,7 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A]" />
           <input
             type="text"
-            placeholder="Search dispatches by title, crew, location..."
+            placeholder="Search by property, crew member, or checklist..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-[#FFFFFF] border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder-[#71717A] focus:outline-none transition-colors duration-200"
@@ -134,9 +134,11 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
             <div className="h-12 w-12 bg-[#FAFAFA] flex items-center justify-center mb-4 border border-[#E4E4E7]">
               <Briefcase className="h-6 w-6 text-[#71717A]" />
             </div>
-            <h3 className="text-sm font-bold text-[#09090B] uppercase tracking-widest">No dispatches found</h3>
-            <p className="text-[#71717A] text-sm mt-2 leading-relaxed">
-              We couldn't find any job match matching your filters or search terms.
+            <h3 className="text-sm font-bold text-[#09090B]">No jobs yet</h3>
+            <p className="text-[#71717A] text-sm mt-2 leading-relaxed max-w-xs">
+              {searchQuery
+                ? 'No jobs match your search. Try a different name or location.'
+                : 'Jobs you send to your crew will appear here. Once a job is completed, you can click it to see the full photo report from the cleaner.'}
             </p>
           </motion.div>
         ) : (

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { assertPremiumServer } from '@/lib/subscription'
 
@@ -19,14 +19,16 @@ async function getOrganizationId(supabase: any): Promise<string> {
   } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  const { data: profile, error } = await supabase
+  const db = createAdminClient()
+  const { data: profile, error } = await db
     .from('profiles')
     .select('org_id')
     .eq('id', user.id)
     .single()
 
   if (error || !profile?.org_id) {
-    throw new Error('Organization not found for current user profile.')
+    const detail = error ? ` DB Error: ${error.message} (code: ${error.code})` : ' Profile org_id is null/empty.'
+    throw new Error(`Organization not found for current user profile.${detail}`)
   }
 
   return profile.org_id
@@ -48,7 +50,9 @@ export async function createTemplate(
     const supabase = await createClient()
     const orgId = await getOrganizationId(supabase)
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS on checklist_templates
+    const db = createAdminClient()
+    const { data, error } = await db
       .from('checklist_templates')
       .insert({
         name: name.trim(),
