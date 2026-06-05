@@ -78,6 +78,63 @@ export async function POST(request: Request) {
       }
 
       console.log(`Paddle webhook success: Subscription ${subscription.id} status updated to ${subscription.status} for org ${orgId}`)
+
+      // Try to extract card details and check for trial abuse if this is a new/updated subscription
+      try {
+        const payments = (subscription as any).transaction?.payments || (subscription as any).payments
+        const cardDetails = payments?.[0]?.method_details?.card
+        
+        if (cardDetails) {
+          const last4 = cardDetails.last4
+          const expiry = `${cardDetails.expiry_month}/${cardDetails.expiry_year}`
+
+          // Find the owner of the organization
+          const { data: orgProfiles } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('org_id', orgId)
+            .eq('role', 'owner')
+            .limit(1)
+
+          const ownerId = orgProfiles?.[0]?.id
+
+          if (ownerId) {
+            // 1. Update this user's tracking record with their card details
+            await supabase
+              .from('trial_tracking')
+              .update({ card_last_4: last4, card_expiry: expiry })
+              .eq('user_id', ownerId)
+
+            // 2. CHECK FOR ABUSE: Does this Card + IP combo exist on another account?
+            const { data: currentUserTracker } = await supabase
+              .from('trial_tracking')
+              .select('ip_address')
+              .eq('user_id', ownerId)
+              .single()
+
+            if (currentUserTracker?.ip_address && currentUserTracker.ip_address !== 'unknown') {
+              const { data: abusers } = await supabase
+                .from('trial_tracking')
+                .select('user_id')
+                .eq('card_last_4', last4)
+                .eq('card_expiry', expiry)
+                .eq('ip_address', currentUserTracker.ip_address)
+                .neq('user_id', ownerId) // Ignore current user
+
+              if (abusers && abusers.length > 0) {
+                console.warn(`🚨 TRIAL ABUSE DETECTED: IP ${currentUserTracker.ip_address} and card last4 ${last4} matches multiple accounts! Owner ID: ${ownerId}`)
+                // Mark organization/profile as suspended or review needed
+                await supabase
+                  .from('organizations')
+                  .update({ subscription_status: 'trial_abuse_suspended' })
+                  .eq('id', orgId)
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error processing trial abuse checks in Paddle webhook:', err)
+      }
     } else if (eventType === 'subscription.canceled') {
       const subscription = data
       const orgId = subscription.customData?.orgId

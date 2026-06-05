@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 
 export type FormState = {
   success?: boolean
@@ -116,12 +117,17 @@ export async function signUpWithOwner(
 
   try {
     const supabase = await createClient()
+    const headersList = await headers()
+    const host = headersList.get('host') || 'cleanqc.vercel.app'
+    const protocol = host.includes('localhost') ? 'http' : 'https'
+    const confirmUrl = `${protocol}://${host}/auth/confirm`
 
     // 1. Sign up user in Auth
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
+        emailRedirectTo: confirmUrl,
         data: {
           full_name: name.trim(),
         },
@@ -136,6 +142,17 @@ export async function signUpWithOwner(
 
     // Use the admin client to bypass RLS during registration setup
     const adminDb = createAdminClient()
+
+    // Grab the user's IP from Vercel/Next headers and record trial tracking
+    try {
+      const userIp = headersList.get('x-forwarded-for') || 'unknown'
+      await adminDb.from('trial_tracking').insert({
+        user_id: userId,
+        ip_address: userIp
+      })
+    } catch (ipErr) {
+      console.error('Failed to log trial tracking IP:', ipErr)
+    }
 
     const baseSlug = orgName
       .trim()
