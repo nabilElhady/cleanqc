@@ -41,7 +41,7 @@ export default async function JobsPage() {
   const { data: jobs, error: jobsErr } = await db
     .from('jobs')
     .select(`
-      *,
+      id, title, location, status, scheduled_at, completed_at, template_id, assigned_to, org_id,
       checklist_templates!template_id (id, name),
       profiles!assigned_to (id, full_name)
     `)

@@ -28,7 +28,7 @@ export default async function TemplateDetailsPage({ params }: TemplateDetailsPag
   // Fetch the template details
   const { data: template, error: templateError } = await supabase
     .from('checklist_templates')
-    .select('*')
+    .select('id, name, description, org_id, created_at')
     .eq('id', id)
     .single()
 
@@ -39,7 +39,7 @@ export default async function TemplateDetailsPage({ params }: TemplateDetailsPag
   // Fetch template items ordered by sort_order
   const { data: items, error: itemsError } = await supabase
     .from('template_items')
-    .select('*')
+    .select('id, template_id, label, requires_photo, sort_order, created_at')
     .eq('template_id', id)
     .order('sort_order', { ascending: true })
 

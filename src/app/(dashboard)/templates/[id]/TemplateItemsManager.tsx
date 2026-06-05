@@ -93,6 +93,10 @@ function SortableItem({ id, label, requiresPhoto }: SortableItemProps) {
 export function TemplateItemsManager({ templateId, initialItems }: TemplateItemsManagerProps) {
   const { isReadOnly, openUpgradeModal } = useSubscription()
   const [items, setItems] = React.useState<TemplateItem[]>(initialItems)
+  const [optimisticItems, reorderOptimistically] = React.useOptimistic(
+    items,
+    (state: TemplateItem[], newOrder: TemplateItem[]) => newOrder
+  )
   const [newLabel, setNewLabel] = React.useState('')
   const [requiresPhoto, setRequiresPhoto] = React.useState(false)
   const [isAdding, setIsAdding] = React.useState(false)
@@ -126,11 +130,13 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
     if (!over || active.id === over.id) return
 
     // Optimistically update UI order immediately
-    const oldIndex = items.findIndex((item) => item.id === active.id)
-    const newIndex = items.findIndex((item) => item.id === over.id)
-    const reorderedItems = arrayMove(items, oldIndex, newIndex)
+    const oldIndex = optimisticItems.findIndex((item) => item.id === active.id)
+    const newIndex = optimisticItems.findIndex((item) => item.id === over.id)
+    const reorderedItems = arrayMove(optimisticItems, oldIndex, newIndex)
 
-    setItems(reorderedItems)
+    React.startTransition(() => {
+      reorderOptimistically(reorderedItems)
+    })
 
     // Call server action in the background with updated sort orders
     const updatePayload = reorderedItems.map((item, index) => ({
@@ -139,9 +145,9 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
     }))
 
     const res = await updateItemOrder(updatePayload)
-    if (!res.success) {
-      // Revert to old order on failure
-      setItems(items)
+    if (res.success) {
+      setItems(reorderedItems)
+    } else {
       setErrorMessage(res.error || 'Failed to update order in database.')
     }
   }
@@ -176,7 +182,7 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold tracking-tight text-[#09090B]">Checklist Tasks</h2>
           <span className="text-sm text-[#71717A] bg-white border border-[#E4E4E7] px-3 py-1 rounded-full font-medium">
-            {items.length} {items.length === 1 ? 'task' : 'tasks'}
+            {optimisticItems.length} {optimisticItems.length === 1 ? 'task' : 'tasks'}
           </span>
         </div>
 
@@ -190,7 +196,7 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
           </div>
         )}
 
-        {items.length === 0 ? (
+        {optimisticItems.length === 0 ? (
           <div className="bg-white border border-[#E4E4E7] border-dashed rounded-xl p-12 text-center text-[#71717A]">
             No tasks in this checklist yet. Use the form on the right to start building.
           </div>
@@ -201,11 +207,11 @@ export function TemplateItemsManager({ templateId, initialItems }: TemplateItems
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={items.map((item) => item.id)}
+              items={optimisticItems.map((item) => item.id)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-3">
-                {items.map((item) => (
+                {optimisticItems.map((item) => (
                   <SortableItem
                     key={item.id}
                     id={item.id}

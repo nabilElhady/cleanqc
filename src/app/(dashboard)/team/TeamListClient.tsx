@@ -38,7 +38,12 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
   const [isDeletingId, setIsDeletingId] = React.useState<string | null>(null)
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null)
 
-  const filteredProfiles = profiles.filter((p) => {
+  const [optimisticProfiles, removeOptimistically] = React.useOptimistic(
+    profiles,
+    (state: Profile[], idToRemove: string) => state.filter(p => p.id !== idToRemove)
+  )
+
+  const filteredProfiles = optimisticProfiles.filter((p) => {
     const email = emailMap[p.id] || ''
     const displayName = p.full_name || (email ? email.split('@')[0] : 'Unnamed Crew')
     const name = displayName.toLowerCase()
@@ -50,11 +55,15 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
   const handleDelete = async (id: string) => {
     setIsDeletingId(id)
     setErrorMsg(null)
+    setConfirmDeleteId(null)
+
+    React.startTransition(() => {
+      removeOptimistically(id)
+    })
+
     try {
       const res = await deleteCrewMember(id)
-      if (res.success) {
-        setConfirmDeleteId(null)
-      } else {
+      if (!res.success) {
         setErrorMsg(res.error || 'Failed to delete member')
       }
     } catch (err: any) {

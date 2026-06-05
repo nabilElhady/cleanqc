@@ -22,7 +22,7 @@ export async function getSubscriptionServer() {
 
   const { data: profile } = await db
     .from('profiles')
-    .select('org_id, role, is_superadmin')
+    .select('org_id, role, is_superadmin, organizations(subscription_status)')
     .eq('id', user.id)
     .single()
 
@@ -40,12 +40,7 @@ export async function getSubscriptionServer() {
     }
   }
 
-  const { data: org } = await db
-    .from('organizations')
-    .select('subscription_status')
-    .eq('id', profile.org_id)
-    .single()
-
+  const org = profile.organizations as any
   const subscriptionStatus = org?.subscription_status || null
   const isPremium = subscriptionStatus === 'active' || subscriptionStatus === 'trialing' || isPermitted
   const isReadOnly = !isPremium

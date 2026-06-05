@@ -30,7 +30,7 @@ export default async function TemplatesPage() {
     const { data, error } = await db
       .from('checklist_templates')
       .select(`
-        *,
+        id, name, description, org_id, created_at,
         template_items (id)
       `)
       .eq('org_id', profile.org_id)

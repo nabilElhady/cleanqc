@@ -5,6 +5,22 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
 import { assertPremiumServer } from '@/lib/subscription'
+import { z } from 'zod'
+import { randomBytes } from 'crypto'
+
+// ==========================================
+// ZOD VALIDATION SCHEMAS
+// ==========================================
+
+const InviteCrewSchema = z.object({
+  name: z.string().min(1, 'Name is required.').max(100).trim(),
+  email: z.string().email('Invalid email address.').max(254).toLowerCase().trim(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').max(128).optional().or(z.literal('')),
+})
+
+const DeleteCrewSchema = z.object({
+  crewMemberId: z.string().uuid('Invalid crew member ID.'),
+})
 
 /**
  * Creates a new crew member user and registers their profile with the manager's organization.
@@ -16,13 +32,16 @@ export async function inviteCrewMember(
 ): Promise<ActionResponse> {
   try {
     await assertPremiumServer()
-    if (!name.trim() || !email.trim()) {
-      return { success: false, error: 'Name and email are required.' }
+
+    const validatedFields = InviteCrewSchema.safeParse({ name, email, password })
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+        .flat()
+        .join(' ')
+      return { success: false, error: errorMsg }
     }
 
-    if (password && password.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters.' }
-    }
+    const { name: parsedName, email: parsedEmail, password: parsedPassword } = validatedFields.data
 
     const supabase = await createClient()
     const {
@@ -50,12 +69,15 @@ export async function inviteCrewMember(
       return { success: false, error: 'Only managers can invite crew members.' }
     }
 
+    // Generate secure temporary fallback password if none is provided
+    const tempPassword = parsedPassword || randomBytes(16).toString('hex')
+
     // 1. Create the user in Auth with confirmed email and password
     const { data: authUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.trim(),
-      password: password || 'CleanQC123!', // fallback temporary password
+      email: parsedEmail,
+      password: tempPassword,
       email_confirm: true,
-      user_metadata: { full_name: name.trim() },
+      user_metadata: { full_name: parsedName },
     })
 
     if (createUserError || !authUser.user) {
@@ -72,7 +94,7 @@ export async function inviteCrewMember(
         id: authUser.user.id,
         org_id: managerProfile.org_id,
         role: 'crew',
-        full_name: name.trim(),
+        full_name: parsedName,
       })
 
     if (insertError) {
@@ -82,6 +104,8 @@ export async function inviteCrewMember(
     }
 
     revalidatePath('/team')
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/team')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }
@@ -94,9 +118,16 @@ export async function inviteCrewMember(
 export async function deleteCrewMember(crewMemberId: string): Promise<ActionResponse> {
   try {
     await assertPremiumServer()
-    if (!crewMemberId) {
-      return { success: false, error: 'Crew member ID is required.' }
+
+    const validatedFields = DeleteCrewSchema.safeParse({ crewMemberId })
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+        .flat()
+        .join(' ')
+      return { success: false, error: errorMsg }
     }
+
+    const { crewMemberId: parsedCrewMemberId } = validatedFields.data
 
     const supabase = await createClient()
     const {
@@ -108,7 +139,7 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
       return { success: false, error: 'Unauthorized' }
     }
 
-    if (currentUser.id === crewMemberId) {
+    if (currentUser.id === parsedCrewMemberId) {
       return { success: false, error: 'You cannot delete yourself.' }
     }
 
@@ -134,7 +165,7 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
     const { data: targetProfile, error: targetError } = await supabaseAdmin
       .from('profiles')
       .select('org_id, role')
-      .eq('id', crewMemberId)
+      .eq('id', parsedCrewMemberId)
       .single()
 
     if (targetError || !targetProfile) {
@@ -159,7 +190,7 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
     const { error: updateJobsError } = await supabaseAdmin
       .from('jobs')
       .update({ assigned_to: null })
-      .eq('assigned_to', crewMemberId)
+      .eq('assigned_to', parsedCrewMemberId)
       .eq('org_id', callerProfile.org_id)
 
     if (updateJobsError) {
@@ -170,14 +201,14 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
     const { error: deleteProfileError } = await supabaseAdmin
       .from('profiles')
       .delete()
-      .eq('id', crewMemberId)
+      .eq('id', parsedCrewMemberId)
 
     if (deleteProfileError) {
       return { success: false, error: `Failed to delete profile record: ${deleteProfileError.message}` }
     }
 
     // 3. Delete the auth user
-    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(crewMemberId)
+    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(parsedCrewMemberId)
 
     if (deleteUserError) {
       return { success: false, error: `Failed to delete user account: ${deleteUserError.message}` }
@@ -185,9 +216,10 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
 
     revalidatePath('/team')
     revalidatePath('/jobs')
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/team')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }
   }
 }
-

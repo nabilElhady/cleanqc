@@ -3,12 +3,37 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { assertPremiumServer } from '@/lib/subscription'
+import { z } from 'zod'
 
 export type ActionResponse<T = any> = {
   success: boolean
   data?: T
   error?: string
 }
+
+// ==========================================
+// ZOD VALIDATION SCHEMAS
+// ==========================================
+
+const CreateTemplateSchema = z.object({
+  name: z.string().min(1, 'Template name is required.').max(100).trim(),
+  description: z.string().max(500).trim().optional().or(z.literal('')),
+})
+
+const AddTemplateItemSchema = z.object({
+  templateId: z.string().uuid('Invalid template ID.'),
+  label: z.string().min(1, 'Item label is required.').max(200).trim(),
+  requiresPhoto: z.boolean(),
+})
+
+const UpdateItemOrderSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string().uuid('Invalid item ID.'),
+      sort_order: z.number().int().nonnegative(),
+    })
+  ).min(1).max(200),
+})
 
 /**
  * Helper to fetch the current authenticated user's organization ID.
@@ -43,9 +68,16 @@ export async function createTemplate(
 ): Promise<ActionResponse> {
   try {
     await assertPremiumServer()
-    if (!name.trim()) {
-      return { success: false, error: 'Template name is required.' }
+
+    const validatedFields = CreateTemplateSchema.safeParse({ name, description })
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+        .flat()
+        .join(' ')
+      return { success: false, error: errorMsg }
     }
+
+    const { name: parsedName, description: parsedDescription } = validatedFields.data
 
     const supabase = await createClient()
     const orgId = await getOrganizationId(supabase)
@@ -55,11 +87,11 @@ export async function createTemplate(
     const { data, error } = await db
       .from('checklist_templates')
       .insert({
-        name: name.trim(),
-        description: description.trim(),
+        name: parsedName,
+        description: parsedDescription,
         org_id: orgId,
       })
-      .select()
+      .select('id')
       .single()
 
     if (error) {
@@ -67,6 +99,7 @@ export async function createTemplate(
     }
 
     revalidatePath('/templates')
+    revalidatePath('/dashboard')
     return { success: true, data }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }
@@ -83,9 +116,16 @@ export async function addTemplateItem(
 ): Promise<ActionResponse> {
   try {
     await assertPremiumServer()
-    if (!label.trim()) {
-      return { success: false, error: 'Item label is required.' }
+
+    const validatedFields = AddTemplateItemSchema.safeParse({ templateId, label, requiresPhoto })
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+        .flat()
+        .join(' ')
+      return { success: false, error: errorMsg }
     }
+
+    const { templateId: parsedTemplateId, label: parsedLabel, requiresPhoto: parsedRequiresPhoto } = validatedFields.data
 
     const supabase = await createClient()
 
@@ -93,7 +133,7 @@ export async function addTemplateItem(
     const { data: maxItem, error: fetchError } = await supabase
       .from('template_items')
       .select('sort_order')
-      .eq('template_id', templateId)
+      .eq('template_id', parsedTemplateId)
       .order('sort_order', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -107,19 +147,19 @@ export async function addTemplateItem(
     const { data, error } = await supabase
       .from('template_items')
       .insert({
-        template_id: templateId,
-        label: label.trim(),
-        requires_photo: requiresPhoto,
+        template_id: parsedTemplateId,
+        label: parsedLabel,
+        requires_photo: parsedRequiresPhoto,
         sort_order: nextSortOrder,
       })
-      .select()
+      .select('id, template_id, label, requires_photo, sort_order, created_at')
       .single()
 
     if (error) {
       return { success: false, error: error.message }
     }
 
-    revalidatePath(`/templates/${templateId}`)
+    revalidatePath(`/templates/${parsedTemplateId}`)
     return { success: true, data }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }
@@ -128,29 +168,60 @@ export async function addTemplateItem(
 
 /**
  * Updates the sort_order of template items after a drag-and-drop reordering.
+ * Optimized from parallel N+1 update loop to a bulk select and atomic upsert.
  */
 export async function updateItemOrder(
   items: { id: string; sort_order: number }[]
 ): Promise<ActionResponse> {
   try {
     await assertPremiumServer()
-    const supabase = await createClient()
 
-    // Perform updates in parallel
-    const promises = items.map((item) =>
-      supabase
-        .from('template_items')
-        .update({ sort_order: item.sort_order })
-        .eq('id', item.id)
-    )
-
-    const results = await Promise.all(promises)
-    const firstError = results.find((res) => res.error)?.error
-
-    if (firstError) {
-      return { success: false, error: firstError.message }
+    const validatedFields = UpdateItemOrderSchema.safeParse({ items })
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+        .flat()
+        .join(' ')
+      return { success: false, error: errorMsg }
     }
 
+    const { items: parsedItems } = validatedFields.data
+    const supabase = await createClient()
+
+    // Extract item IDs to perform bulk select
+    const itemIds = parsedItems.map((item) => item.id)
+
+    // 1. Fetch full records for the items being updated (to keep all NOT NULL columns when upserting)
+    const { data: existingItems, error: fetchError } = await supabase
+      .from('template_items')
+      .select('id, template_id, label, requires_photo, sort_order')
+      .in('id', itemIds)
+
+    if (fetchError || !existingItems) {
+      return {
+        success: false,
+        error: fetchError?.message || 'Failed to fetch existing checklist items.',
+      }
+    }
+
+    // 2. Map the new sort orders onto the retrieved items
+    const updatedItems = existingItems.map((item) => {
+      const targetUpdate = parsedItems.find((p) => p.id === item.id)
+      return {
+        ...item,
+        sort_order: targetUpdate ? targetUpdate.sort_order : item.sort_order,
+      }
+    })
+
+    // 3. Perform a single batch upsert to atomically reorder
+    const { error: upsertError } = await supabase
+      .from('template_items')
+      .upsert(updatedItems)
+
+    if (upsertError) {
+      return { success: false, error: upsertError.message }
+    }
+
+    // Multi-tenant cache invalidation
     // Revalidate templates path pattern
     revalidatePath('/templates/[id]', 'layout')
     return { success: true }

@@ -26,7 +26,7 @@ export async function GET() {
   // Fetch all orgs
   const { data: orgs, error } = await db
     .from('organizations')
-    .select('*')
+    .select('id, name, owner_id, created_at, subscription_status')
     .order('created_at', { ascending: false })
 
   if (error) {

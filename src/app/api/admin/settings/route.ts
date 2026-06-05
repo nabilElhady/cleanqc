@@ -8,7 +8,7 @@ export async function GET() {
   // Fetch settings
   const { data: settings, error } = await db
     .from('system_settings')
-    .select('*')
+    .select('id, key, value, updated_at')
 
   if (error || !settings) {
     return NextResponse.json({ maintenance_mode: false })

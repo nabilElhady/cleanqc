@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
 export interface InviteResponse {
   success: boolean
@@ -11,11 +12,21 @@ export interface InviteResponse {
   emailSent?: boolean
 }
 
+const InviteCrewSchema = z.object({
+  email: z.string().email('Invalid email address.').max(254).toLowerCase().trim(),
+})
+
+const DeleteCrewSchema = z.object({
+  crewMemberId: z.string().uuid('Invalid crew member ID.'),
+})
+
 export async function inviteCrew(email: string): Promise<InviteResponse> {
   try {
-    if (!email || !email.trim()) {
-      return { success: false, error: 'Email address is required.' }
+    const validated = InviteCrewSchema.safeParse({ email })
+    if (!validated.success) {
+      return { success: false, error: validated.error.issues[0]?.message || 'Validation error' }
     }
+    const parsedEmail = validated.data.email
 
     const supabase = await createClient()
 
@@ -58,7 +69,7 @@ export async function inviteCrew(email: string): Promise<InviteResponse> {
     let inviteLink: string | undefined = undefined
     let emailSent = false
 
-    const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email.trim(), {
+    const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(parsedEmail, {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/crew/setup`,
       data: { role: 'crew' },
     })
@@ -70,7 +81,7 @@ export async function inviteCrew(email: string): Promise<InviteResponse> {
       // If email sending is not configured (e.g., SMTP disabled locally), fallback to generateLink
       const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
         type: 'invite',
-        email: email.trim(),
+        email: parsedEmail,
         options: {
           data: { role: 'crew' },
         }
@@ -129,9 +140,11 @@ export async function inviteCrew(email: string): Promise<InviteResponse> {
 
 export async function deleteCrew(crewMemberId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!crewMemberId) {
-      return { success: false, error: 'Crew member ID is required.' }
+    const validated = DeleteCrewSchema.safeParse({ crewMemberId })
+    if (!validated.success) {
+      return { success: false, error: validated.error.issues[0]?.message || 'Validation error' }
     }
+    const parsedCrewMemberId = validated.data.crewMemberId
 
     const supabase = await createClient()
 
@@ -145,7 +158,7 @@ export async function deleteCrew(crewMemberId: string): Promise<{ success: boole
       return { success: false, error: 'Unauthorized. Please log in.' }
     }
 
-    if (currentUser.id === crewMemberId) {
+    if (currentUser.id === parsedCrewMemberId) {
       return { success: false, error: 'You cannot delete yourself.' }
     }
 
@@ -175,7 +188,7 @@ export async function deleteCrew(crewMemberId: string): Promise<{ success: boole
     const { data: targetProfile, error: targetErr } = await supabaseAdmin
       .from('profiles')
       .select('org_id, role')
-      .eq('id', crewMemberId)
+      .eq('id', parsedCrewMemberId)
       .single()
 
     if (targetErr || !targetProfile) {
@@ -201,7 +214,7 @@ export async function deleteCrew(crewMemberId: string): Promise<{ success: boole
     const { error: jobsErr } = await supabaseAdmin
       .from('jobs')
       .update({ assigned_to: null })
-      .eq('assigned_to', crewMemberId)
+      .eq('assigned_to', parsedCrewMemberId)
 
     if (jobsErr) {
       console.error('Error unassigning jobs:', jobsErr)
@@ -211,14 +224,14 @@ export async function deleteCrew(crewMemberId: string): Promise<{ success: boole
     const { error: deleteProfileErr } = await supabaseAdmin
       .from('profiles')
       .delete()
-      .eq('id', crewMemberId)
+      .eq('id', parsedCrewMemberId)
 
     if (deleteProfileErr) {
       return { success: false, error: `Failed to delete profile record: ${deleteProfileErr.message}` }
     }
 
     // 8. Delete user from auth
-    const { error: deleteUserErr } = await supabaseAdmin.auth.admin.deleteUser(crewMemberId)
+    const { error: deleteUserErr } = await supabaseAdmin.auth.admin.deleteUser(parsedCrewMemberId)
 
     if (deleteUserErr) {
       return { success: false, error: `Failed to delete user account: ${deleteUserErr.message}` }

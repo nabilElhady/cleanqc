@@ -4,12 +4,43 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
+import { z } from 'zod'
 
 export type FormState = {
   success?: boolean
   error?: string
   needsConfirmation?: boolean
 }
+
+// ==========================================
+// 1. STRICT ZOD VALIDATION SCHEMAS
+// ==========================================
+
+const SignInSchema = z.object({
+  email: z.string().email('Invalid email address.').max(254).toLowerCase().trim(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').max(128),
+  redirect: z.string().max(200).optional().or(z.literal('')),
+})
+
+const SignUpSchema = z.object({
+  name: z.string().min(1, 'Full Name is required.').max(100).trim(),
+  email: z.string().email('Invalid email address.').max(254).toLowerCase().trim(),
+  password: z.string().min(8, 'Password must be at least 8 characters.').max(128),
+  orgName: z.string().min(1, 'Organization Name is required.').max(100).trim(),
+  redirect: z.string().max(200).optional().or(z.literal('')),
+})
+
+// Helper to prevent Open Redirect vulnerabilities
+function getSafeRedirect(path: string | undefined | null): string {
+  if (!path) return '/dashboard'
+  // Permits alphanumeric paths, dashes, underscores, and forward slashes (no domains or absolute URLs allowed)
+  const isSafe = /^\/[a-zA-Z0-9\-_\/]*$/.test(path)
+  return isSafe ? path : '/dashboard'
+}
+
+// ==========================================
+// 2. HARDENED SERVER ACTIONS
+// ==========================================
 
 /**
  * Handles standard Email & Password sign-in.
@@ -30,23 +61,23 @@ export async function signInWithPassword(
     return { error: 'Invalid form submission.' }
   }
 
-  const email = actualFormData.get('email') as string
-  const password = actualFormData.get('password') as string
-  const redirectTo = actualFormData.get('redirect') as string
+  const rawFields = Object.fromEntries(actualFormData.entries())
+  const validatedFields = SignInSchema.safeParse(rawFields)
 
-  if (!email || !email.includes('@')) {
-    return { error: 'Please enter a valid email address.' }
+  if (!validatedFields.success) {
+    const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+      .flat()
+      .join(' ')
+    return { error: errorMsg }
   }
 
-  if (!password || password.length < 6) {
-    return { error: 'Password must be at least 6 characters.' }
-  }
+  const { email, password, redirect: redirectTo } = validatedFields.data
 
   const supabase = await createClient()
 
   // Sign in using Supabase email & password
   const { data: authData, error } = await supabase.auth.signInWithPassword({
-    email: email.trim(),
+    email,
     password,
   })
 
@@ -66,8 +97,9 @@ export async function signInWithPassword(
   const isSuperadmin = profile?.is_superadmin === true
 
   // Perform role-based server-side redirect
-  if (redirectTo && redirectTo.startsWith('/')) {
-    redirect(redirectTo)
+  if (redirectTo) {
+    const destination = getSafeRedirect(redirectTo)
+    redirect(destination)
   } else if (isSuperadmin) {
     redirect('/admin')
   } else if (userRole === 'crew') {
@@ -96,40 +128,34 @@ export async function signUpWithOwner(
     return { error: 'Invalid form submission.' }
   }
 
-  const name = actualFormData.get('name') as string
-  const email = actualFormData.get('email') as string
-  const password = actualFormData.get('password') as string
-  const orgName = actualFormData.get('orgName') as string
-  const redirectTo = actualFormData.get('redirect') as string
+  const rawFields = Object.fromEntries(actualFormData.entries())
+  const validatedFields = SignUpSchema.safeParse(rawFields)
 
-  if (!name || name.trim().length === 0) {
-    return { error: 'Full Name is required.' }
+  if (!validatedFields.success) {
+    const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+      .flat()
+      .join(' ')
+    return { error: errorMsg }
   }
-  if (!email || !email.includes('@')) {
-    return { error: 'Please enter a valid email address.' }
-  }
-  if (!password || password.length < 6) {
-    return { error: 'Password must be at least 6 characters.' }
-  }
-  if (!orgName || orgName.trim().length === 0) {
-    return { error: 'Organization Name is required.' }
-  }
+
+  const { name, email, password, orgName, redirect: redirectTo } = validatedFields.data
 
   try {
     const supabase = await createClient()
     const headersList = await headers()
-    const host = headersList.get('host') || 'cleanqc.vercel.app'
-    const protocol = host.includes('localhost') ? 'http' : 'https'
-    const confirmUrl = `${protocol}://${host}/auth/confirm`
+    
+    // Fix: Eradicate host header injection by relying strictly on ENV configuration
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cleanqc.vercel.app'
+    const confirmUrl = `${siteUrl}/auth/confirm`
 
     // 1. Sign up user in Auth
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
+      email,
       password,
       options: {
         emailRedirectTo: confirmUrl,
         data: {
-          full_name: name.trim(),
+          full_name: name,
         },
       },
     })
@@ -143,7 +169,7 @@ export async function signUpWithOwner(
     // Use the admin client to bypass RLS during registration setup
     const adminDb = createAdminClient()
 
-    // Grab the user's IP from Vercel/Next headers and record trial tracking
+    // Grab the user's IP from Vercel/Next headers and record trial tracking (trial abuse prevention)
     try {
       const userIp = headersList.get('x-forwarded-for') || 'unknown'
       await adminDb.from('trial_tracking').insert({
@@ -155,17 +181,16 @@ export async function signUpWithOwner(
     }
 
     const baseSlug = orgName
-      .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
     const slug = `${baseSlug || 'org'}-${Math.random().toString(36).substring(2, 8)}`
 
-    // 2. Create the Organization
+    // 2. Create the Organization (Fix: select only the 'id' column)
     const { data: orgData, error: orgError } = await adminDb
       .from('organizations')
       .insert({ 
-        name: orgName.trim(),
+        name: orgName,
         slug
       })
       .select('id')
@@ -179,45 +204,21 @@ export async function signUpWithOwner(
 
     const orgId = orgData.id
 
-    // 3. Create/Update Profile
-    const { data: existingProfile } = await adminDb
+    // 3. Create/Update Profile (Fix: Consolidate verification into a single atomic upsert)
+    const { error: upsertError } = await adminDb
       .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single()
+      .upsert({
+        id: userId,
+        org_id: orgId,
+        role: 'owner',
+        full_name: name,
+      }, { onConflict: 'id' })
 
-    if (existingProfile) {
-      const { error: updateError } = await adminDb
-        .from('profiles')
-        .update({
-          org_id: orgId,
-          role: 'owner',
-          full_name: name.trim(),
-        })
-        .eq('id', userId)
-
-      if (updateError) {
-        // Rollback org and auth user
-        await adminDb.from('organizations').delete().eq('id', orgId)
-        await adminDb.auth.admin.deleteUser(userId)
-        return { error: updateError.message }
-      }
-    } else {
-      const { error: insertError } = await adminDb
-        .from('profiles')
-        .insert({
-          id: userId,
-          org_id: orgId,
-          role: 'owner',
-          full_name: name.trim(),
-        })
-
-      if (insertError) {
-        // Rollback org and auth user
-        await adminDb.from('organizations').delete().eq('id', orgId)
-        await adminDb.auth.admin.deleteUser(userId)
-        return { error: insertError.message }
-      }
+    if (upsertError) {
+      // Rollback org and auth user
+      await adminDb.from('organizations').delete().eq('id', orgId)
+      await adminDb.auth.admin.deleteUser(userId)
+      return { error: upsertError.message }
     }
 
     // If email confirmation is enabled, session will be null and the user must verify their email first
@@ -226,11 +227,8 @@ export async function signUpWithOwner(
     }
 
     // Redirect to redirect parameter or default dashboard
-    if (redirectTo && redirectTo.startsWith('/')) {
-      redirect(redirectTo)
-    } else {
-      redirect('/dashboard')
-    }
+    const destination = getSafeRedirect(redirectTo)
+    redirect(destination)
   } catch (err: any) {
     console.error('Signup error:', err)
     return { error: err.message || 'An unexpected error occurred during signup.' }

@@ -40,7 +40,7 @@ export default async function TeamPage() {
   // Fetch all profiles in organization
   const { data: profiles, error } = await db
     .from('profiles')
-    .select('*')
+    .select('id, org_id, role, full_name, phone, created_at')
     .eq('org_id', currentProfile.org_id)
     .order('role', { ascending: true })
     .order('created_at', { ascending: false })

@@ -32,7 +32,7 @@ export async function GET() {
   // Fetch profiles
   const { data: profiles, error: profileError } = await db
     .from('profiles')
-    .select('*')
+    .select('id, org_id, role, full_name, created_at')
 
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
