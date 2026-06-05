@@ -114,104 +114,109 @@ export async function signUpWithOwner(
     return { error: 'Organization Name is required.' }
   }
 
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  // 1. Sign up user in Auth
-  const { data: authData, error: signUpError } = await supabase.auth.signUp({
-    email: email.trim(),
-    password,
-    options: {
-      data: {
-        full_name: name.trim(),
+    // 1. Sign up user in Auth
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          full_name: name.trim(),
+        },
       },
-    },
-  })
-
-  if (signUpError || !authData.user) {
-    return { error: signUpError?.message || 'Failed to sign up.' }
-  }
-
-  const userId = authData.user.id
-
-  // Use the admin client to bypass RLS during registration setup
-  const adminDb = createAdminClient()
-
-  const baseSlug = orgName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-  const slug = `${baseSlug || 'org'}-${Math.random().toString(36).substring(2, 8)}`
-
-  // 2. Create the Organization
-  const { data: orgData, error: orgError } = await adminDb
-    .from('organizations')
-    .insert({ 
-      name: orgName.trim(),
-      slug
     })
-    .select('id')
-    .single()
 
-  if (orgError || !orgData) {
-    // Rollback Auth user to prevent orphaned auth record
-    await adminDb.auth.admin.deleteUser(userId)
-    return { error: orgError?.message || 'Failed to create organization.' }
-  }
+    if (signUpError || !authData.user) {
+      return { error: signUpError?.message || 'Failed to sign up.' }
+    }
 
-  const orgId = orgData.id
+    const userId = authData.user.id
 
-  // 3. Create/Update Profile
-  const { data: existingProfile } = await adminDb
-    .from('profiles')
-    .select('id')
-    .eq('id', userId)
-    .single()
+    // Use the admin client to bypass RLS during registration setup
+    const adminDb = createAdminClient()
 
-  if (existingProfile) {
-    const { error: updateError } = await adminDb
-      .from('profiles')
-      .update({
-        org_id: orgId,
-        role: 'owner',
-        full_name: name.trim(),
+    const baseSlug = orgName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+    const slug = `${baseSlug || 'org'}-${Math.random().toString(36).substring(2, 8)}`
+
+    // 2. Create the Organization
+    const { data: orgData, error: orgError } = await adminDb
+      .from('organizations')
+      .insert({ 
+        name: orgName.trim(),
+        slug
       })
+      .select('id')
+      .single()
+
+    if (orgError || !orgData) {
+      // Rollback Auth user to prevent orphaned auth record
+      await adminDb.auth.admin.deleteUser(userId)
+      return { error: orgError?.message || 'Failed to create organization.' }
+    }
+
+    const orgId = orgData.id
+
+    // 3. Create/Update Profile
+    const { data: existingProfile } = await adminDb
+      .from('profiles')
+      .select('id')
       .eq('id', userId)
+      .single()
 
-    if (updateError) {
-      // Rollback org and auth user
-      await adminDb.from('organizations').delete().eq('id', orgId)
-      await adminDb.auth.admin.deleteUser(userId)
-      return { error: updateError.message }
+    if (existingProfile) {
+      const { error: updateError } = await adminDb
+        .from('profiles')
+        .update({
+          org_id: orgId,
+          role: 'owner',
+          full_name: name.trim(),
+        })
+        .eq('id', userId)
+
+      if (updateError) {
+        // Rollback org and auth user
+        await adminDb.from('organizations').delete().eq('id', orgId)
+        await adminDb.auth.admin.deleteUser(userId)
+        return { error: updateError.message }
+      }
+    } else {
+      const { error: insertError } = await adminDb
+        .from('profiles')
+        .insert({
+          id: userId,
+          org_id: orgId,
+          role: 'owner',
+          full_name: name.trim(),
+        })
+
+      if (insertError) {
+        // Rollback org and auth user
+        await adminDb.from('organizations').delete().eq('id', orgId)
+        await adminDb.auth.admin.deleteUser(userId)
+        return { error: insertError.message }
+      }
     }
-  } else {
-    const { error: insertError } = await adminDb
-      .from('profiles')
-      .insert({
-        id: userId,
-        org_id: orgId,
-        role: 'owner',
-        full_name: name.trim(),
-      })
 
-    if (insertError) {
-      // Rollback org and auth user
-      await adminDb.from('organizations').delete().eq('id', orgId)
-      await adminDb.auth.admin.deleteUser(userId)
-      return { error: insertError.message }
+    // If email confirmation is enabled, session will be null and the user must verify their email first
+    if (!authData.session) {
+      return { success: true, needsConfirmation: true }
     }
-  }
 
-  // If email confirmation is enabled, session will be null and the user must verify their email first
-  if (!authData.session) {
-    return { success: true, needsConfirmation: true }
-  }
-
-  // Redirect to redirect parameter or default dashboard
-  if (redirectTo && redirectTo.startsWith('/')) {
-    redirect(redirectTo)
-  } else {
-    redirect('/dashboard')
+    // Redirect to redirect parameter or default dashboard
+    if (redirectTo && redirectTo.startsWith('/')) {
+      redirect(redirectTo)
+    } else {
+      redirect('/dashboard')
+    }
+  } catch (err: any) {
+    console.error('Signup error:', err)
+    return { error: err.message || 'An unexpected error occurred during signup.' }
   }
 }
 
