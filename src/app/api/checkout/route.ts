@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
 
 // Force dynamic execution for API routes that read cookies/sessions
@@ -35,8 +35,9 @@ async function getCheckoutData() {
     return { error: 'Unauthorized. Please log in first.', status: 401 }
   }
 
+  const adminDb = createAdminClient()
   // Fetch profile to verify role and get org_id
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await adminDb
     .from('profiles')
     .select('org_id, role')
     .eq('id', user.id)
