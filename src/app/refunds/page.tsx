@@ -1,6 +1,10 @@
 export default function RefundPolicyPage() {
   return (
-    <div className="max-w-3xl mx-auto py-16 px-6 sm:px-8 text-gray-800">
+    <div className="min-h-screen relative bg-background">
+      {/* Crisp Grid Background */}
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
+      
+      <div className="relative z-10 max-w-3xl mx-auto py-16 px-6 sm:px-8 text-gray-800 bg-white border border-border shadow-sm my-12">
       <h1 className="text-3xl font-bold mb-8 text-gray-900">Refund Policy</h1>
       <p className="mb-4">Last updated: {new Date().toLocaleDateString()}</p>
       
@@ -22,10 +26,11 @@ export default function RefundPolicyPage() {
         <section>
           <h2 className="text-xl font-semibold mb-2">Questions</h2>
           <p>
-            If you have an issue with your account or billing, please reach out to us at <strong>support@getcrewmark.com</strong> before initiating any chargebacks.
+            If you have an issue with your account or billing, please reach out to us at <strong>nabil@nabil-systems.xyz</strong> before initiating any chargebacks.
           </p>
         </section>
       </div>
+    </div>
     </div>
   );
 }
