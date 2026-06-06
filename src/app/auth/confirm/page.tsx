@@ -97,7 +97,7 @@ function AuthConfirmHandler() {
           </div>
           <h3 className="text-lg font-black text-[#09090B] uppercase tracking-wider">Account Verified</h3>
           <p className="text-zinc-500 text-sm mt-3 leading-relaxed">
-            Your CleanQC account has been successfully activated. You can now sign in to your workspace dashboard.
+            Your Crewmark account has been successfully activated. You can now sign in to your workspace dashboard.
           </p>
         </div>
         <div className="pt-4 border-t border-[#E4E4E7]">

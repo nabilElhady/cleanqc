@@ -27,7 +27,7 @@ export default function DownloadReportButton({ jobId, className = '' }: Download
       const downloadUrl = window.URL.createObjectURL(blob)
       const downloadLink = document.createElement('a')
       downloadLink.href = downloadUrl
-      downloadLink.setAttribute('download', `CleanQC-Report-${jobId}.pdf`)
+      downloadLink.setAttribute('download', `Crewmark-Report-${jobId}.pdf`)
       document.body.appendChild(downloadLink)
       downloadLink.click()
       downloadLink.parentNode?.removeChild(downloadLink)

@@ -87,7 +87,7 @@ export default function Home() {
               <Sparkles className="h-4 w-4 text-background" />
             </div>
             <span className="font-extrabold text-lg tracking-tight">
-              CleanQC
+              Crewmark
             </span>
           </div>
 
@@ -262,7 +262,7 @@ export default function Home() {
               </motion.h3>
             </div>
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              CleanQC implements strict Row-Level Security (RLS) on top of Supabase. Every query, media asset, and checklist record is secured at the database layer, guaranteeing complete organization data isolation.
+              Crewmark implements strict Row-Level Security (RLS) on top of Supabase. Every query, media asset, and checklist record is secured at the database layer, guaranteeing complete organization data isolation.
             </p>
             <div className="space-y-6">
               {['Active Row-Level Security', 'Signed Expiring Storage Access', 'Expiring OTP Magic Verification'].map((item, index) => (
@@ -283,7 +283,7 @@ export default function Home() {
 
           <CrispCard className="p-10 !shadow-none border border-border">
             <p className="text-xl leading-relaxed font-medium">
-              "We manage over 100 properties. CleanQC's custom checklist builder and GPS logging transformed how we manage dispatches. Our verification process takes minutes now instead of hours."
+              "We manage over 100 properties. Crewmark's custom checklist builder and GPS logging transformed how we manage dispatches. Our verification process takes minutes now instead of hours."
             </p>
             <div className="flex items-center gap-4 pt-6 border-t border-border mt-8">
               <div className="h-12 w-12 bg-foreground flex items-center justify-center text-xs font-bold text-background uppercase tracking-wider">
@@ -300,13 +300,14 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-border py-12 bg-card">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-[11px] text-muted-foreground font-bold">
-          <p>© {new Date().getFullYear()} CleanQC Inc. All rights reserved.</p>
-          <div className="flex gap-8 uppercase tracking-widest">
-            <NavLink href="#">Privacy Policy</NavLink>
-            <NavLink href="#">Terms of Service</NavLink>
-            <NavLink href="#">Support</NavLink>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-[11px] text-muted-foreground font-bold uppercase tracking-widest">
+          <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6">
+            <Link href="/terms" className="hover:text-foreground transition">Terms & Conditions</Link>
+            <Link href="/privacy" className="hover:text-foreground transition">Privacy Policy</Link>
+            <Link href="/refunds" className="hover:text-foreground transition">Refund Policy</Link>
+            <a href="mailto:support@getcrewmark.com" className="hover:text-foreground transition">Contact Support</a>
           </div>
+          <p>&copy; {new Date().getFullYear()} Crewmark. All rights reserved.</p>
         </div>
       </footer>
     </div>

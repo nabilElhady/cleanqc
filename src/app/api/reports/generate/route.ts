@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       .eq('id', job.assigned_to)
       .single()
 
-    const orgName = org?.name || 'CleanQC'
+    const orgName = org?.name || 'Crewmark'
     const crewName = crewProfile?.full_name || 'Assigned Crew Member'
 
     // 5. Fetch checklist items and responses
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
     return new Response(pdfStream as any, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="CleanQC-Report-${jobId}.pdf"`,
+        'Content-Disposition': `attachment; filename="Crewmark-Report-${jobId}.pdf"`,
       },
     })
   } catch (err: any) {

@@ -84,7 +84,7 @@ export default function DashboardLayoutClient({
         <div className="h-6 w-6 bg-[#09090B] flex items-center justify-center">
           <Square className="h-3 w-3 text-white" />
         </div>
-        <span className="font-bold tracking-tight text-sm">CleanQC</span>
+        <span className="font-bold tracking-tight text-sm">Crewmark</span>
       </div>
 
       {/* Admin Portal */}
@@ -191,7 +191,7 @@ export default function DashboardLayoutClient({
           <div className="h-6 w-6 bg-[#09090B] flex items-center justify-center">
             <Square className="h-3 w-3 text-white" />
           </div>
-          <span className="font-bold tracking-tight text-sm">CleanQC</span>
+          <span className="font-bold tracking-tight text-sm">Crewmark</span>
         </div>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

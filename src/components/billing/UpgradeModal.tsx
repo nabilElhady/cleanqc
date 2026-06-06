@@ -30,7 +30,7 @@ export function UpgradeModal() {
             Subscription Required
           </h3>
           <p className="text-zinc-600 text-sm mt-3 leading-relaxed font-medium">
-            Your trial has expired. Upgrade to CleanQC Pro to dispatch new jobs and create templates.
+            Your trial has expired. Upgrade to Crewmark Pro to dispatch new jobs and create templates.
           </p>
         </div>
 

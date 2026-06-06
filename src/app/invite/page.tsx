@@ -38,7 +38,7 @@ function InviteContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white p-4">
       <div className="max-w-md w-full border border-black p-8 text-center">
-        <h1 className="text-2xl font-mono uppercase mb-4 text-black">CleanQC Dispatch</h1>
+        <h1 className="text-2xl font-mono uppercase mb-4 text-black">Crewmark Dispatch</h1>
         {error ? (
           <div className="text-red-600 border border-red-600 p-4 mb-4 font-mono text-sm uppercase">
             {error}

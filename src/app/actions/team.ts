@@ -12,7 +12,7 @@ import { randomBytes } from 'crypto'
 // ZOD VALIDATION SCHEMAS
 // ==========================================
 
-const InviteCrewSchema = z.object({
+const InviteUserSchema = z.object({
   name: z.string().min(1, 'Name is required.').max(100).trim(),
   email: z.string().email('Invalid email address.').max(254).toLowerCase().trim(),
   password: z.string().min(6, 'Password must be at least 6 characters.').max(128).optional().or(z.literal('')),
@@ -21,6 +21,45 @@ const InviteCrewSchema = z.object({
 const DeleteCrewSchema = z.object({
   crewMemberId: z.string().uuid('Invalid crew member ID.'),
 })
+
+/**
+ * Helper to check seat limits for a given organization and role.
+ */
+async function checkSeatLimits(orgId: string, roleToAdd: 'crew' | 'manager', supabaseAdmin: any): Promise<{ allowed: boolean; error?: string }> {
+  // 1. Get organization tier
+  const { data: org } = await supabaseAdmin
+    .from('organizations')
+    .select('subscription_tier')
+    .eq('id', orgId)
+    .single()
+
+  const tier = org?.subscription_tier || 'starter' // default to starter
+
+  // 2. Count existing users by role
+  const { data: profiles, error } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('org_id', orgId)
+
+  if (error || !profiles) {
+    return { allowed: false, error: 'Could not fetch current organization usage.' }
+  }
+
+  const crewCount = profiles.filter((p: any) => p.role === 'crew').length
+  const managerCount = profiles.filter((p: any) => p.role === 'manager' || p.role === 'owner').length
+
+  // 3. Apply Limits
+  if (tier === 'starter') {
+    if (roleToAdd === 'crew' && crewCount >= 5) return { allowed: false, error: 'Starter tier is limited to 5 Crew members.' }
+    if (roleToAdd === 'manager' && managerCount >= 1) return { allowed: false, error: 'Starter tier is limited to 1 Manager (Owner).' }
+  } else if (tier === 'growth') {
+    if (roleToAdd === 'crew' && crewCount >= 20) return { allowed: false, error: 'Growth tier is limited to 20 Crew members.' }
+    if (roleToAdd === 'manager' && managerCount >= 3) return { allowed: false, error: 'Growth tier is limited to 3 Managers.' }
+  }
+  // scale tier is unlimited
+
+  return { allowed: true }
+}
 
 /**
  * Creates a new crew member user and registers their profile with the manager's organization.
@@ -33,7 +72,7 @@ export async function inviteCrewMember(
   try {
     await assertPremiumServer()
 
-    const validatedFields = InviteCrewSchema.safeParse({ name, email, password })
+    const validatedFields = InviteUserSchema.safeParse({ name, email, password })
     if (!validatedFields.success) {
       const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
         .flat()
@@ -69,6 +108,12 @@ export async function inviteCrewMember(
       return { success: false, error: 'Only managers can invite crew members.' }
     }
 
+    // Check Seat Limits before proceeding
+    const limitCheck = await checkSeatLimits(managerProfile.org_id, 'crew', supabaseAdmin)
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.error, requiresUpgrade: true }
+    }
+
     // Generate secure temporary fallback password if none is provided
     const tempPassword = parsedPassword || randomBytes(16).toString('hex')
 
@@ -99,6 +144,88 @@ export async function inviteCrewMember(
 
     if (insertError) {
       // Rollback: Delete newly created auth user to prevent orphaned identities
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+      return { success: false, error: insertError.message }
+    }
+
+    revalidatePath('/team')
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/team')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'An error occurred.' }
+  }
+}
+
+/**
+ * Creates a new manager user and registers their profile with the organization.
+ * Only owners can invite other managers.
+ */
+export async function inviteManager(
+  name: string,
+  email: string,
+  password?: string
+): Promise<ActionResponse> {
+  try {
+    await assertPremiumServer()
+
+    const validatedFields = InviteUserSchema.safeParse({ name, email, password })
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
+        .flat()
+        .join(' ')
+      return { success: false, error: errorMsg }
+    }
+
+    const { name: parsedName, email: parsedEmail, password: parsedPassword } = validatedFields.data
+
+    const supabase = await createClient()
+    const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !currentUser) return { success: false, error: 'Unauthorized' }
+
+    const supabaseAdmin = createAdminClient()
+    const { data: managerProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('org_id, role')
+      .eq('id', currentUser.id)
+      .single()
+
+    if (profileError || !managerProfile?.org_id) return { success: false, error: 'Could not retrieve organization ID.' }
+
+    if (managerProfile.role !== 'owner') {
+      return { success: false, error: 'Only owners can invite other managers.' }
+    }
+
+    // Check Seat Limits before proceeding
+    const limitCheck = await checkSeatLimits(managerProfile.org_id, 'manager', supabaseAdmin)
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.error, requiresUpgrade: true }
+    }
+
+    const tempPassword = parsedPassword || randomBytes(16).toString('hex')
+
+    const { data: authUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+      email: parsedEmail,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { full_name: parsedName },
+    })
+
+    if (createUserError || !authUser.user) {
+      return { success: false, error: createUserError?.message || 'Failed to create authenticated user.' }
+    }
+
+    const { error: insertError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: authUser.user.id,
+        org_id: managerProfile.org_id,
+        role: 'manager',
+        full_name: parsedName,
+      })
+
+    if (insertError) {
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
       return { success: false, error: insertError.message }
     }

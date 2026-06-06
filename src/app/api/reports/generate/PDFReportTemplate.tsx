@@ -179,7 +179,7 @@ export default function PDFReportTemplate({
         {/* Header Title */}
         <View style={styles.header}>
           <Text style={styles.title}>Quality Control Report</Text>
-          <Text style={styles.subtitle}>CleanQC Quality Assurance System</Text>
+          <Text style={styles.subtitle}>Crewmark Quality Assurance System</Text>
         </View>
 
         {/* Metadata Grid */}

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CleanQC | Premium Property Quality Control & Dispatching",
-  description: "The modern, role-based quality control and dispatching platform for property managers and cleaning crew.",
+  title: "Crewmark - Next-Gen Quality Control",
+  description: "Crewmark - Next-Gen Quality Control",
 };
 
 import MaintenanceBanner from '@/components/MaintenanceBanner'

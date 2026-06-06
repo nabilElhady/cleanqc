@@ -14,12 +14,24 @@ const paddle = new Paddle(paddleApiKey || '', {
   environment: paddleEnv === 'production' ? Environment.production : Environment.sandbox,
 })
 
-async function getCheckoutData() {
+async function getCheckoutData(req?: Request) {
   if (!paddleApiKey) {
     return { error: 'Paddle API Key not configured on the server.', status: 500 }
   }
 
-  if (!paddlePriceId) {
+  let requestedPriceId = paddlePriceId
+  if (req && req.method === 'POST') {
+    try {
+      const body = await req.json()
+      if (body.priceId) {
+        requestedPriceId = body.priceId
+      }
+    } catch (e) {
+      // ignore JSON parse errors
+    }
+  }
+
+  if (!requestedPriceId) {
     return { error: 'Paddle Price ID not configured on the server.', status: 500 }
   }
 
@@ -57,7 +69,7 @@ async function getCheckoutData() {
     const transaction = await paddle.transactions.create({
       items: [
         {
-          priceId: paddlePriceId,
+          priceId: requestedPriceId,
           quantity: 1,
         },
       ],
@@ -88,8 +100,8 @@ async function getCheckoutData() {
   }
 }
 
-export async function POST() {
-  const result = await getCheckoutData()
+export async function POST(req: Request) {
+  const result = await getCheckoutData(req)
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: result.status })
@@ -101,8 +113,8 @@ export async function POST() {
   })
 }
 
-export async function GET() {
-  const result = await getCheckoutData()
+export async function GET(req: Request) {
+  const result = await getCheckoutData(req)
 
   if (result.error) {
     // Redirect back to pricing page with error query param

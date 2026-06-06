@@ -108,7 +108,7 @@ function TrackerInner() {
                 </p>
               )}
               <p className="text-xs text-zinc-300 font-medium pt-1">
-                Your subscription has been successfully provisioned. Welcome to CleanQC Pro!
+                Your subscription has been successfully provisioned. Welcome to Crewmark Pro!
               </p>
             </div>
 

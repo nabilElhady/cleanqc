@@ -4,8 +4,8 @@ import { PricingClient } from './PricingClient'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Pricing | CleanQC',
-  description: 'Upgrade to CleanQC Pro for premium property quality control and dispatching features.',
+  title: 'Pricing | Crewmark',
+  description: 'Upgrade to Crewmark Pro for premium property quality control and dispatching features.',
 }
 
 export default async function PricingPage() {
@@ -44,7 +44,7 @@ export default async function PricingPage() {
     }
   }
 
-  // Value list for CleanQC Pro
+  // Value list for Crewmark Pro
   const features = [
     'Unlimited quality control templates',
     'Interactive inspection reports',
@@ -60,7 +60,7 @@ export default async function PricingPage() {
         {/* Navigation / Header */}
         <div className="absolute top-8 left-8">
           <a href="/" className="font-mono text-sm tracking-wider uppercase font-bold hover:underline">
-            ← CleanQC
+            ← Crewmark
           </a>
         </div>
 
@@ -77,7 +77,7 @@ export default async function PricingPage() {
             </p>
           </div>
 
-          <div className="w-full max-w-md">
+          <div className="w-full mt-8 flex justify-center">
             <PricingClient
               isAuthenticated={!!user}
               userRole={userRole}

@@ -100,7 +100,7 @@ export default function SignupPage() {
           <div className="h-12 w-12 bg-[#09090B] flex items-center justify-center mb-6">
             <Sparkles className="h-6 w-6 text-[#FFFFFF]" />
           </div>
-          <h2 className="text-3xl font-black tracking-tight text-[#09090B]">CleanQC</h2>
+          <h2 className="text-3xl font-black tracking-tight text-[#09090B]">Crewmark</h2>
           <p className="mt-2 text-sm text-[#71717A] font-medium">Create an owner account and register your business</p>
         </div>
 

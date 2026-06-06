@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export const metadata = {
-  title: 'CleanQC Crew Portal',
+  title: 'Crewmark Crew Portal',
   description: 'Mobile interface for cleaning crew operations.',
 }
 
@@ -41,7 +41,7 @@ export default async function CrewLayout({ children }: { children: React.ReactNo
               <Square className="h-3.5 w-3.5 text-[#FFFFFF]" fill="currentColor" />
             </div>
             <span className="font-extrabold text-lg tracking-tight text-[#09090B]">
-              CleanQC
+              Crewmark
             </span>
             <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest bg-[#FAFAFA] text-[#71717A] border border-[#E4E4E7]">
               Crew

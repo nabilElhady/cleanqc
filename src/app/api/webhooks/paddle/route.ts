@@ -64,11 +64,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'No orgId found in customData' }, { status: 400 })
       }
 
+      // Determine subscription tier based on Price ID
+      let tier = 'starter'
+      const priceId = subscription.items?.[0]?.price?.id || subscription.items?.[0]?.price_id || ''
+      if (priceId === (process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_SCALE || 'pri_scale_123')) tier = 'scale'
+      else if (priceId === (process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_GROWTH || 'pri_growth_456')) tier = 'growth'
+      else if (priceId === (process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_STARTER || 'pri_starter_789')) tier = 'starter'
+
       const { error: dbError } = await supabase
         .from('organizations')
         .update({
           subscription_status: subscription.status,
           paddle_subscription_id: subscription.id,
+          subscription_tier: tier,
         })
         .eq('id', orgId)
 

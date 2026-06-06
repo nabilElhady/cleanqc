@@ -174,7 +174,7 @@ function BillingClientInner({
                 <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">
                   Monthly Plan
                 </h3>
-                <h2 className="text-3xl font-extrabold text-[#09090B]">CleanQC Pro</h2>
+                <h2 className="text-3xl font-extrabold text-[#09090B]">Crewmark Pro</h2>
               </div>
               <div className="text-right">
                 <span className="font-mono text-3xl font-extrabold">$49</span>
