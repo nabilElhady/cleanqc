@@ -305,7 +305,7 @@ export default function Home() {
             <Link href="/terms" className="hover:text-foreground transition">Terms & Conditions</Link>
             <Link href="/privacy" className="hover:text-foreground transition">Privacy Policy</Link>
             <Link href="/refunds" className="hover:text-foreground transition">Refund Policy</Link>
-            <a href="mailto:nabil@nabil-systems.xyz" className="hover:text-foreground transition">Contact Support</a>
+            <Link href="/contact" className="hover:text-foreground transition">Contact Support</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} Crewmark. All rights reserved.</p>
         </div>
