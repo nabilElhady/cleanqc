@@ -70,7 +70,10 @@ export async function submitSupportMessage(
 
     if (!emailRes.ok) {
       const errText = await emailRes.text()
-      console.error('Failed to send contact notification email:', errText)
+      console.error('Resend error status:', emailRes.status, errText)
+    } else {
+      const data = await emailRes.json()
+      console.log('Resend success:', data)
     }
   } catch (emailErr) {
     console.error('Error calling Resend API:', emailErr)
