@@ -10,6 +10,7 @@ interface BillingClientProps {
   userRole: string | null
   orgId: string | null
   subscriptionStatus: string | null
+  subscriptionTier: string | null
   updateUrl: string | null
   cancelUrl: string | null
   paddleClientToken: string
@@ -17,13 +18,46 @@ interface BillingClientProps {
   paddleEnv: string
 }
 
+const TIERS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: 19,
+    description: 'Perfect for small teams getting started with organized dispatching.',
+    features: ['1 Manager', 'Up to 5 Crew Members', 'Basic templates', 'Job dispatch'],
+    priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_STARTER || 'pri_starter_789',
+    highlight: false,
+  },
+  {
+    id: 'growth',
+    name: 'Growth',
+    price: 49,
+    description: 'Our most popular plan. Crush legacy enterprise tools with lightning speed.',
+    features: ['3 Managers', 'Up to 20 Crew Members', 'Custom templates', 'Advanced QC reports', 'Zero-Latency Mobile QC Experience'],
+    priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_GROWTH || 'pri_growth_456',
+    highlight: true,
+    badge: 'Competitor Equivalent: $225/mo',
+  },
+  {
+    id: 'scale',
+    name: 'Scale',
+    price: 99,
+    description: 'For large operations requiring limitless expansion and VIP support.',
+    features: ['Unlimited Managers', 'Unlimited Crew Members', 'Multi-location support', 'Priority 24/7 support'],
+    priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_SCALE || 'pri_scale_123',
+    highlight: false,
+  },
+]
+
 function BillingClientInner({
   isAuthenticated,
   userRole,
   subscriptionStatus,
+  subscriptionTier,
   updateUrl,
   cancelUrl,
   paddleClientToken,
+  paddlePriceId,
   paddleEnv,
 }: BillingClientProps) {
   const router = useRouter()
@@ -33,8 +67,6 @@ function BillingClientInner({
   const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const errorParam = searchParams.get('error')
-
-
 
   // Initialize Paddle.js using official loader
   useEffect(() => {
@@ -59,11 +91,11 @@ function BillingClientInner({
       })
   }, [paddleClientToken, paddleEnv])
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (priceId: string) => {
     setErrorMsg(null)
 
     if (!isAuthenticated) {
-      router.push('/login?redirect=/dashboard/billing?trigger=checkout')
+      router.push(`/login?redirect=/dashboard/billing?trigger=checkout&priceId=${priceId}`)
       return
     }
 
@@ -85,6 +117,7 @@ function BillingClientInner({
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ priceId }),
       })
 
       const data = await response.json()
@@ -115,32 +148,20 @@ function BillingClientInner({
   // Automatically trigger subscribe if trigger query param is set
   useEffect(() => {
     const trigger = searchParams.get('trigger')
-    if (trigger === 'checkout' && isAuthenticated && userRole === 'owner' && paddle && !initializing) {
+    const triggerPriceId = searchParams.get('priceId')
+    if (trigger === 'checkout' && triggerPriceId && isAuthenticated && userRole === 'owner' && paddle && !initializing) {
       const newParams = new URLSearchParams(window.location.search)
       newParams.delete('trigger')
+      newParams.delete('priceId')
       const searchString = newParams.toString()
       const cleanPath = window.location.pathname + (searchString ? `?${searchString}` : '')
       router.replace(cleanPath)
-      handleSubscribe()
+      handleSubscribe(triggerPriceId)
     }
   }, [searchParams, isAuthenticated, userRole, paddle, initializing])
 
-  const getButtonText = () => {
-    if (initializing) return 'Initializing Billing Engine...'
-    if (loading) return 'Processing...'
-    return 'Subscribe Now'
-  }
-
   const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
-
-  const features = [
-    'Unlimited quality control templates',
-    'Interactive inspection reports',
-    'Real-time crew dispatching',
-    'Offline-ready sync',
-    'Up to 10 crew members',
-    'PDF export & custom branding',
-  ]
+  const currentTier = TIERS.find(t => t.id === subscriptionTier) || TIERS.find(t => t.priceId === paddlePriceId) || TIERS[1]
 
   return (
     <div className="w-full max-w-5xl flex flex-col items-center mx-auto py-6 relative">
@@ -166,51 +187,51 @@ function BillingClientInner({
         </p>
       </div>
 
-      <div className="w-full max-w-md">
-        <div className="bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex flex-col justify-between w-full min-h-[500px]">
-          <div>
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">
-                  Monthly Plan
-                </h3>
-                <h2 className="text-3xl font-extrabold text-[#09090B]">Crewmark Pro</h2>
+      {isSubscribed ? (
+        <div className="w-full max-w-md">
+          <div className="bg-white border border-[#E4E4E7] p-8 rounded-none shadow-[8px_8px_0px_#09090B] flex flex-col justify-between w-full min-h-[500px]">
+            <div>
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">
+                    Monthly Plan
+                  </h3>
+                  <h2 className="text-3xl font-extrabold text-[#09090B]">Crewmark {currentTier.name}</h2>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono text-3xl font-extrabold">${currentTier.price}</span>
+                  <span className="text-zinc-500 text-xs font-mono block">/month</span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="font-mono text-3xl font-extrabold">$49</span>
-                <span className="text-zinc-500 text-xs font-mono block">/month</span>
+
+              {/* Active Subscription Notice Banner */}
+              <div className="mb-6 p-3 bg-zinc-50 border border-[#E4E4E7] text-[#09090B] text-xs font-mono flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+                <span className="font-bold tracking-tight uppercase">Active Subscription</span>
+              </div>
+
+              <p className="text-zinc-500 text-sm mb-8 leading-relaxed">
+                {currentTier.description}
+              </p>
+
+              {/* Feature List */}
+              <div className="border-t border-[#E4E4E7] pt-6 mb-8">
+                <h4 className="font-mono text-xs uppercase tracking-wider text-[#09090B] font-bold mb-4">
+                  What's Included:
+                </h4>
+                <ul className="space-y-3">
+                  {currentTier.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start text-sm">
+                      <span className="text-emerald-600 mr-3 flex-shrink-0 font-bold">✓</span>
+                      <span className="text-[#09090B]">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
-            {/* 7-Day Free Trial Notice Banner */}
-            <div className="mb-6 p-3 bg-zinc-50 border border-[#E4E4E7] text-[#09090B] text-xs font-mono flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
-              <span className="font-bold tracking-tight uppercase">Includes 7-Day Free Trial</span>
-            </div>
-
-            <p className="text-zinc-500 text-sm mb-8 leading-relaxed">
-              Unlock full team access, custom branding, and advanced template builders to supercharge your property management.
-            </p>
-
-            {/* Feature List */}
-            <div className="border-t border-[#E4E4E7] pt-6 mb-8">
-              <h4 className="font-mono text-xs uppercase tracking-wider text-[#09090B] font-bold mb-4">
-                What's Included:
-              </h4>
-              <ul className="space-y-3">
-                {features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-sm">
-                    <span className="text-emerald-600 mr-3 flex-shrink-0 font-bold">✓</span>
-                    <span className="text-[#09090B]">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Action Footer depending on subscription status */}
-          <div className="mt-auto border-t border-[#E4E4E7] pt-6">
-            {isSubscribed ? (
+            {/* Action Footer depending on subscription status */}
+            <div className="mt-auto border-t border-[#E4E4E7] pt-6">
               <div className="space-y-6">
                 <div className="flex items-center justify-between text-sm font-mono mb-4">
                   <span className="text-zinc-500">Subscription Status</span>
@@ -261,28 +282,81 @@ function BillingClientInner({
                   )}
                 </div>
               </div>
-            ) : (
-              <div>
-                {(errorMsg || errorParam) && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-mono font-medium">
-                    {errorMsg || errorParam}
-                  </div>
-                )}
-
-                <button
-                  onClick={handleSubscribe}
-                  disabled={initializing || loading}
-                  className="w-full bg-[#09090B] text-white hover:bg-zinc-800 disabled:bg-zinc-400 py-4 px-6 font-mono text-sm uppercase tracking-wider font-bold transition-all duration-150 flex items-center justify-center border border-[#09090B] shadow-[2px_2px_0px_#FFFFFF] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer disabled:cursor-not-allowed"
-                >
-                  {getButtonText()}
-                </button>
-
-
-              </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="w-full max-w-6xl">
+          {(errorMsg || errorParam) && (
+            <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 text-sm font-mono font-medium max-w-2xl mx-auto text-center shadow-[4px_4px_0px_#FECACA]">
+              {errorMsg || errorParam}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+            {TIERS.map((tier) => (
+              <div
+                key={tier.id}
+                className={`bg-white border p-8 flex flex-col justify-between w-full min-h-[500px] transition-transform duration-200 ${
+                  tier.highlight 
+                    ? 'border-[#09090B] shadow-[8px_8px_0px_#09090B] md:-translate-y-4' 
+                    : 'border-[#E4E4E7] shadow-[4px_4px_0px_#E4E4E7] hover:shadow-[8px_8px_0px_#09090B]'
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className={`font-mono text-xs uppercase tracking-widest font-bold mb-1 ${tier.highlight ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                        {tier.name}
+                      </h3>
+                      <h2 className="text-3xl font-extrabold text-[#09090B]">${tier.price}</h2>
+                      <span className="text-zinc-500 text-xs font-mono block">/month</span>
+                    </div>
+                  </div>
+
+                  {tier.badge && (
+                    <div className="mb-4 p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-bold flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+                      {tier.badge}
+                    </div>
+                  )}
+
+                  <p className="text-zinc-600 text-sm mb-6 leading-relaxed font-medium">
+                    {tier.description}
+                  </p>
+
+                  <div className="border-t border-[#E4E4E7] pt-6 mb-8">
+                    <ul className="space-y-3">
+                      {tier.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start text-sm">
+                          <span className="text-emerald-600 mr-3 flex-shrink-0 font-bold">✓</span>
+                          <span className={`${feature.includes('Zero-Latency') ? 'font-bold text-[#09090B]' : 'text-zinc-700'}`}>
+                            {feature}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mt-auto">
+                  <button
+                    onClick={() => handleSubscribe(tier.priceId)}
+                    disabled={initializing || loading}
+                    className={`w-full py-4 px-6 font-mono text-sm uppercase tracking-wider font-bold transition-all flex items-center justify-center border shadow-[2px_2px_0px_#FFFFFF] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                      tier.highlight 
+                        ? 'bg-[#09090B] text-white hover:bg-zinc-800 border-[#09090B]' 
+                        : 'bg-white text-[#09090B] hover:bg-zinc-50 border-[#09090B]'
+                    }`}
+                  >
+                    {initializing ? 'Loading...' : loading ? 'Processing...' : 'Select Plan'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="mt-8 text-zinc-500 text-xs font-mono">
         Secure billing powered by Paddle. Cancel anytime.

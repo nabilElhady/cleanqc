@@ -21,7 +21,7 @@ async function getBillingData() {
 
   const { data: org } = await db
     .from('organizations')
-    .select('subscription_status, paddle_subscription_id')
+    .select('subscription_status, paddle_subscription_id, subscription_tier')
     .eq('id', profile.org_id)
     .single()
 
@@ -48,6 +48,7 @@ async function getBillingData() {
     userRole: profile.role,
     orgId: profile.org_id,
     subscriptionStatus: org.subscription_status,
+    subscriptionTier: org.subscription_tier,
     updateUrl,
     cancelUrl,
     paddleClientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
@@ -74,6 +75,7 @@ export default async function DashboardBillingPage() {
       userRole={billingData.userRole}
       orgId={billingData.orgId}
       subscriptionStatus={billingData.subscriptionStatus}
+      subscriptionTier={billingData.subscriptionTier}
       updateUrl={billingData.updateUrl}
       cancelUrl={billingData.cancelUrl}
       paddleClientToken={billingData.paddleClientToken}
