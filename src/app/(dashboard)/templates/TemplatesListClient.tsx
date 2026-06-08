@@ -3,7 +3,9 @@
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { FileText, ClipboardList, ArrowRight, Calendar, Search, Plus, Building2, Sparkles, Brush, Lock } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { FileText, ClipboardList, ArrowRight, Calendar, Search, Plus, Building2, Sparkles, Brush, Lock, Loader2 } from 'lucide-react'
+import { copyStandardTemplate } from '@/app/actions/templates'
 
 interface Template {
   id: string
@@ -15,6 +17,7 @@ interface Template {
 
 interface TemplatesListClientProps {
   initialTemplates: Template[]
+  subscriptionTier?: string
 }
 
 function FlatCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -48,8 +51,27 @@ const STANDARD_TEMPLATES = [
   }
 ]
 
-export function TemplatesListClient({ initialTemplates }: TemplatesListClientProps) {
+export function TemplatesListClient({ initialTemplates, subscriptionTier = 'starter' }: TemplatesListClientProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = React.useState('')
+  const [loadingStdId, setLoadingStdId] = React.useState<string | null>(null)
+
+  let templateLimit = 3
+  if (subscriptionTier === 'growth') templateLimit = 20
+  if (subscriptionTier === 'scale') templateLimit = Infinity
+
+  const isLimitReached = initialTemplates.length >= templateLimit
+
+  const handleCopyStandard = async (stdId: string) => {
+    setLoadingStdId(stdId)
+    const res = await copyStandardTemplate(stdId)
+    if (res.success && res.data) {
+      router.push(`/templates/${res.data.id}`)
+    } else {
+      alert(res.error || 'Failed to copy template.')
+      setLoadingStdId(null)
+    }
+  }
 
   const filteredTemplates = initialTemplates.filter((t) => {
     const name = t.name.toLowerCase()
@@ -111,10 +133,18 @@ export function TemplatesListClient({ initialTemplates }: TemplatesListClientPro
               <div className="border-t border-[#E4E4E7] pt-4 mt-4">
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center px-4 py-2 bg-[#09090B] text-[#FFFFFF] text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-[#27272A] cursor-pointer"
-                  onClick={() => alert('Assign Standard Template functionality coming soon!')}
+                  disabled={loadingStdId === std.id}
+                  className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-[#09090B] text-[#FFFFFF] text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-[#27272A] cursor-pointer disabled:opacity-50"
+                  onClick={() => handleCopyStandard(std.id)}
                 >
-                  Assign to Job
+                  {loadingStdId === std.id ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Add to My Templates'
+                  )}
                 </button>
               </div>
             </FlatCard>
@@ -124,9 +154,17 @@ export function TemplatesListClient({ initialTemplates }: TemplatesListClientPro
 
       {/* 2. CUSTOM TEMPLATES SECTION */}
       <div className="pt-8 border-t border-[#E4E4E7]">
-        <div className="flex items-center gap-2 mb-6">
-          <Lock className="w-4 h-4 text-[#71717A]" />
-          <h2 className="text-xl font-black tracking-tight text-[#71717A]">Custom Templates</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-[#71717A]" />
+            <h2 className="text-xl font-black tracking-tight text-[#71717A]">Custom Templates</h2>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#71717A] bg-[#FAFAFA] border border-[#E4E4E7] px-3 py-1.5 w-fit">
+            <span>Template Limit:</span>
+            <span className={isLimitReached ? 'text-rose-500' : 'text-[#09090B]'}>
+              {initialTemplates.length} / {templateLimit === Infinity ? 'Unlimited' : templateLimit}
+            </span>
+          </div>
         </div>
 
         <div className="relative max-w-md mb-6">
@@ -146,21 +184,17 @@ export function TemplatesListClient({ initialTemplates }: TemplatesListClientPro
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="bg-[#FAFAFA] border border-[#E4E4E7] border-dashed p-12 text-center max-w-xl mx-auto flex flex-col items-center opacity-80"
+              className="bg-[#FAFAFA] border border-[#E4E4E7] border-dashed p-12 text-center max-w-xl mx-auto flex flex-col items-center"
             >
               <div className="h-12 w-12 bg-[#FFFFFF] flex items-center justify-center mb-4 border border-[#E4E4E7]">
-                <Lock className="h-6 w-6 text-[#71717A]" />
+                <ClipboardList className="h-6 w-6 text-[#71717A]" />
               </div>
-              <h3 className="text-sm font-bold text-[#09090B]">Customization Locked</h3>
+              <h3 className="text-sm font-bold text-[#09090B]">No custom templates found</h3>
               <p className="text-[#71717A] text-sm mt-2 leading-relaxed max-w-sm">
-                Unlock the ability to build custom, location-specific checklists for medical facilities, specialized industrial sites, or VIP clients by upgrading your tier.
+                {searchQuery
+                  ? "We couldn't find any custom templates matching your search."
+                  : "You haven't created any custom checklists yet. Build location-specific workflows for your team."}
               </p>
-              <Link
-                href="/dashboard/billing"
-                className="mt-6 flex items-center gap-2 bg-[#09090B] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#27272A] transition-colors"
-              >
-                Upgrade to Unlock
-              </Link>
             </motion.div>
           ) : (
             <motion.div

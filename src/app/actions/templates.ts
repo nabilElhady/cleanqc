@@ -12,6 +12,46 @@ export type ActionResponse<T = any> = {
   requiresUpgrade?: boolean
 }
 
+const STANDARD_TEMPLATES_DATA: Record<string, { name: string, description: string, items: {label: string, requiresPhoto: boolean}[] }> = {
+  'std-1': {
+    name: 'Daily Office Cleaning',
+    description: 'Standard daily workflow covering workspaces, breakrooms, and security checks.',
+    items: [
+      { label: 'Empty all trash receptacles and replace liners.', requiresPhoto: false },
+      { label: 'Vacuum all carpeted areas and rugs.', requiresPhoto: false },
+      { label: 'Sweep and mop all hard surface floors.', requiresPhoto: false },
+      { label: 'Dust all cleared horizontal surfaces.', requiresPhoto: false },
+      { label: 'Wipe down breakroom counters, sink, and tables.', requiresPhoto: true },
+      { label: 'Clean and sanitize restroom toilets and sinks.', requiresPhoto: true },
+      { label: 'Restock restroom supplies (paper towels, soap, toilet paper).', requiresPhoto: false },
+      { label: 'Ensure all doors are locked and security alarms set before leaving.', requiresPhoto: false },
+    ]
+  },
+  'std-2': {
+    name: 'Restroom Sanitation',
+    description: 'Strict hygiene checklist for cleaning, disinfecting, and restocking restrooms.',
+    items: [
+      { label: 'Clean and disinfect all toilets and urinals (inside and out).', requiresPhoto: false },
+      { label: 'Clean and polish sinks, mirrors, and fixtures (no streaks).', requiresPhoto: false },
+      { label: 'Sweep and wet-mop floors with disinfectant.', requiresPhoto: false },
+      { label: 'Refill toilet paper and hand soap dispensers.', requiresPhoto: true },
+      { label: 'Empty sanitary bins and replace liners.', requiresPhoto: false },
+    ]
+  },
+  'std-3': {
+    name: 'Monthly Deep Clean',
+    description: 'Intensive monthly tasks including high dusting, baseboards, and deep floor care.',
+    items: [
+      { label: 'High dusting of ceiling corners, vents, and light fixtures.', requiresPhoto: false },
+      { label: 'Wipe down all baseboards and door frames.', requiresPhoto: true },
+      { label: 'Deep scrub and polish all hard surface floors.', requiresPhoto: true },
+      { label: 'Clean interior windows and glass partitions.', requiresPhoto: false },
+      { label: 'Vacuum all upholstered furniture.', requiresPhoto: false },
+      { label: 'Sanitize all high-touch areas (light switches, door handles, elevator buttons).', requiresPhoto: false },
+    ]
+  }
+}
+
 // ==========================================
 // ZOD VALIDATION SCHEMAS
 // ==========================================
@@ -130,6 +170,68 @@ export async function createTemplate(
     revalidatePath('/templates')
     revalidatePath('/dashboard')
     return { success: true, data }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'An error occurred.' }
+  }
+}
+
+/**
+ * Copies a standard template to the organization's custom templates.
+ */
+export async function copyStandardTemplate(
+  stdId: string
+): Promise<ActionResponse> {
+  try {
+    await assertPremiumServer()
+
+    const stdData = STANDARD_TEMPLATES_DATA[stdId]
+    if (!stdData) {
+      return { success: false, error: 'Standard template not found.' }
+    }
+
+    const supabase = await createClient()
+    const orgId = await getOrganizationId(supabase)
+
+    const db = createAdminClient()
+    
+    // Check limits
+    const limitCheck = await checkTemplateLimits(orgId, db)
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.error, requiresUpgrade: true }
+    }
+
+    const { data: newTemplate, error } = await db
+      .from('checklist_templates')
+      .insert({
+        name: stdData.name,
+        description: stdData.description,
+        org_id: orgId,
+      })
+      .select('id')
+      .single()
+
+    if (error || !newTemplate) {
+      return { success: false, error: error?.message || 'Failed to copy template.' }
+    }
+
+    const itemRows = stdData.items.map((item, index) => ({
+      template_id: newTemplate.id,
+      label: item.label,
+      requires_photo: item.requiresPhoto,
+      sort_order: index + 1,
+    }))
+
+    const { error: itemsErr } = await db
+      .from('template_items')
+      .insert(itemRows)
+
+    if (itemsErr) {
+      return { success: false, error: `Failed to save checklist items: ${itemsErr.message}` }
+    }
+
+    revalidatePath('/templates')
+    revalidatePath('/dashboard')
+    return { success: true, data: newTemplate }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }
   }

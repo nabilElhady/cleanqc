@@ -28,8 +28,19 @@ export default async function TemplatesPage() {
     .single()
 
   let templates: any[] = []
+  let subscriptionTier = 'starter'
 
   if (profile?.org_id) {
+    const { data: orgData } = await db
+      .from('organizations')
+      .select('subscription_tier')
+      .eq('id', profile.org_id)
+      .single()
+
+    if (orgData?.subscription_tier) {
+      subscriptionTier = orgData.subscription_tier
+    }
+
     const { data, error } = await db
       .from('checklist_templates')
       .select(`
@@ -59,7 +70,7 @@ export default async function TemplatesPage() {
         <CreateTemplateDialog />
       </div>
 
-      <TemplatesListClient initialTemplates={templates} />
+      <TemplatesListClient initialTemplates={templates} subscriptionTier={subscriptionTier} />
     </div>
   )
 }
