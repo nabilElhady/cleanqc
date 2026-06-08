@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { assertPremiumServer } from '@/lib/subscription'
 import { CreateJobForm } from './CreateJobForm'
 import { JobsListClient } from './JobsListClient'
 
@@ -16,6 +17,8 @@ export default async function JobsPage() {
   if (!user) {
     redirect('/login')
   }
+
+  await assertPremiumServer()
 
   // Use admin client so RLS never blocks reading org_id
   const db = createAdminClient()

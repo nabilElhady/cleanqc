@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { cache } from 'react'
 
-export async function getSubscriptionServer() {
+export const getSubscriptionServer = cache(async () => {
   // Use cookie-based client ONLY for auth identity check
   const supabase = await createClient()
   const {
@@ -22,13 +23,15 @@ export async function getSubscriptionServer() {
 
   const { data: profile } = await db
     .from('profiles')
-    .select('org_id, role, is_superadmin, organizations(subscription_status)')
+    .select('org_id, role, is_superadmin, suspended_at, organizations(subscription_status)')
     .eq('id', user.id)
     .single()
 
   const isAdmin = !!profile?.is_superadmin
   const isOwner = profile?.role === 'owner'
   const isPermitted = isAdmin
+  const role = profile?.role || null
+  const suspendedAt = profile?.suspended_at || null
 
   if (!profile?.org_id) {
     return {
@@ -37,6 +40,8 @@ export async function getSubscriptionServer() {
       isReadOnly: !isPermitted,
       isAdmin,
       isOwner,
+      role,
+      suspendedAt,
     }
   }
 
@@ -51,16 +56,16 @@ export async function getSubscriptionServer() {
     isReadOnly,
     isAdmin,
     isOwner,
+    role,
+    suspendedAt,
   }
-}
+})
 
-/**
- * Asserts that the current user belongs to an active premium organization or is an admin.
- * Throws a strict 403 error if the check fails.
- */
+import { redirect } from 'next/navigation'
+
 export async function assertPremiumServer() {
   const { isPremium } = await getSubscriptionServer()
   if (!isPremium) {
-    throw new Error('403: Active subscription required')
+    redirect('/dashboard/billing?error=This feature requires an active premium subscription.')
   }
 }

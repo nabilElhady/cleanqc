@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const protectedPaths = ['/dashboard', '/templates', '/jobs', '/team']
+  const protectedPaths = ['/dashboard', '/templates', '/jobs', '/team', '/admin', '/crew']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   // 1. Protect routes requiring authentication
@@ -54,79 +54,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    const db = createAdminClient()
-    const { data: profile } = await db
-      .from('profiles')
-      .select('org_id, role, is_superadmin, suspended_at')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.suspended_at) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/suspended'
-      return NextResponse.redirect(url)
-    }
-
-    // Redirect crew members trying to access manager dashboard/admin routes
-    if (profile?.role === 'crew' || user.user_metadata?.role === 'crew') {
+    // Fast-path redirect for crew members trying to access manager/admin dashboard
+    if (user.user_metadata?.role === 'crew' && !request.nextUrl.pathname.startsWith('/crew')) {
       const url = request.nextUrl.clone()
       url.pathname = '/crew/jobs'
       return NextResponse.redirect(url)
-    }
-
-    // 2. Gate premium features: templates, jobs, team
-    const premiumPaths = ['/templates', '/jobs', '/team', '/dashboard/team']
-    const isPremiumPath = premiumPaths.some(path => request.nextUrl.pathname.startsWith(path))
-
-    if (isPremiumPath) {
-      let isPremiumActive = false
-
-      if (profile?.is_superadmin === true) {
-        isPremiumActive = true
-      } else if (profile?.org_id) {
-        const { data: org } = await db
-          .from('organizations')
-          .select('subscription_status')
-          .eq('id', profile.org_id)
-          .single()
-
-        if (org?.subscription_status === 'active' || org?.subscription_status === 'trialing') {
-          isPremiumActive = true
-        }
-      }
-
-      if (!isPremiumActive) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard/billing'
-        url.searchParams.set('error', 'This feature requires an active premium subscription.')
-        return NextResponse.redirect(url)
-      }
     }
   }
 
   // Redirect authenticated user away from login page to their specific dashboard
   if (request.nextUrl.pathname.startsWith('/login')) {
     if (user) {
-      // Use admin client for reliable role read
-      const db = createAdminClient()
-      const { data: profile } = await db
-        .from('profiles')
-        .select('role, is_superadmin, suspended_at')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.suspended_at) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/suspended'
-        return NextResponse.redirect(url)
-      }
-
       const url = request.nextUrl.clone()
-      if (profile?.is_superadmin === true) {
-        url.pathname = '/admin'
-      } else if (profile?.role === 'crew') {
+      if (user.user_metadata?.role === 'crew') {
         url.pathname = '/crew/jobs'
       } else {
+        // Defer specific admin/owner routing to the server component
         url.pathname = '/dashboard'
       }
       return NextResponse.redirect(url)

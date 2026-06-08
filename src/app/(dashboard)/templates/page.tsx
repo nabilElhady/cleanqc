@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { assertPremiumServer } from '@/lib/subscription'
 import { CreateTemplateDialog } from './CreateTemplateDialog'
 import { TemplatesListClient } from './TemplatesListClient'
 
@@ -15,6 +16,8 @@ export default async function TemplatesPage() {
   if (!user) {
     redirect('/login')
   }
+
+  await assertPremiumServer()
 
   // Resolve user profile for isolation via admin client to bypass RLS recursion
   const db = createAdminClient()
