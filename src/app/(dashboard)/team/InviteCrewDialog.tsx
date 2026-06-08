@@ -9,7 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { inviteCrewMember } from '@/app/actions/team'
 import { PremiumActionWrapper } from '@/components/billing/PremiumActionWrapper'
 
-export function InviteCrewDialog() {
+interface InviteCrewDialogProps {
+  subscriptionTier: string
+}
+
+export function InviteCrewDialog({ subscriptionTier }: InviteCrewDialogProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState('')

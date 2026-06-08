@@ -19,6 +19,7 @@ interface TeamListClientProps {
   emailMap: Record<string, string>
   currentUserId: string
   currentUserRole: string
+  subscriptionTier: string
 }
 
 function FlatCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -31,7 +32,7 @@ function FlatCard({ children, className = '' }: { children: React.ReactNode; cla
   )
 }
 
-export function TeamListClient({ profiles, emailMap, currentUserId, currentUserRole }: TeamListClientProps) {
+export function TeamListClient({ profiles, emailMap, currentUserId, currentUserRole, subscriptionTier }: TeamListClientProps) {
   const { isReadOnly, openUpgradeModal } = useSubscription()
   const [searchQuery, setSearchQuery] = React.useState('')
   const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
@@ -108,6 +109,22 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-[#FFFFFF] border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder-[#71717A] focus:outline-none transition-colors duration-300"
         />
+      </div>
+
+      {/* Limits visual counter */}
+      <div className="flex gap-4 mb-4">
+        <div className="text-xs font-mono bg-[#FAFAFA] border border-[#E4E4E7] px-3 py-1.5 inline-flex items-center gap-2">
+          <span className="text-[#71717A]">Crew Limit:</span>
+          <strong className="text-[#09090B]">
+            {profiles.filter(p => p.role === 'crew').length} / {subscriptionTier === 'starter' ? '5' : subscriptionTier === 'growth' ? '20' : 'Unlimited'}
+          </strong>
+        </div>
+        <div className="text-xs font-mono bg-[#FAFAFA] border border-[#E4E4E7] px-3 py-1.5 inline-flex items-center gap-2">
+          <span className="text-[#71717A]">Manager Limit:</span>
+          <strong className="text-[#09090B]">
+            {profiles.filter(p => p.role === 'manager' || p.role === 'owner').length} / {subscriptionTier === 'starter' ? '1' : subscriptionTier === 'growth' ? '3' : 'Unlimited'}
+          </strong>
+        </div>
       </div>
 
       {errorMsg && (

@@ -40,6 +40,18 @@ export default async function TeamPage() {
     )
   }
 
+  // Fetch subscription tier to calculate limits
+  let subscriptionTier = 'starter'
+  const { data: orgData } = await db
+    .from('organizations')
+    .select('subscription_tier')
+    .eq('id', currentProfile.org_id)
+    .single()
+  
+  if (orgData?.subscription_tier) {
+    subscriptionTier = orgData.subscription_tier
+  }
+
   // Fetch all profiles in organization
   const { data: profiles, error } = await db
     .from('profiles')
@@ -85,7 +97,7 @@ export default async function TeamPage() {
             Manage your organization's manager and cleaning crew members.
           </p>
         </div>
-        <InviteCrewDialog />
+        <InviteCrewDialog subscriptionTier={subscriptionTier} />
       </div>
 
       <TeamListClient
@@ -93,6 +105,7 @@ export default async function TeamPage() {
         emailMap={emailMap}
         currentUserId={user.id}
         currentUserRole={currentProfile.role}
+        subscriptionTier={subscriptionTier}
       />
     </div>
   )

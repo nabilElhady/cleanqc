@@ -61,6 +61,27 @@ async function getOrganizationId(supabase: any): Promise<string> {
 }
 
 /**
+ * Helper to check template limits for an organization.
+ */
+async function checkTemplateLimits(orgId: string, supabaseAdmin: any): Promise<{ allowed: boolean; error?: string }> {
+  const { data: org } = await supabaseAdmin.from('organizations').select('subscription_tier').eq('id', orgId).single()
+  const tier = org?.subscription_tier || 'starter'
+
+  const { count, error } = await supabaseAdmin
+    .from('checklist_templates')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .not('name', 'ilike', 'Ad-hoc:%')
+
+  if (error) return { allowed: false, error: 'Could not fetch current template usage.' }
+
+  if (tier === 'starter' && (count || 0) >= 3) return { allowed: false, error: 'Starter tier is limited to 3 custom templates.' }
+  if (tier === 'growth' && (count || 0) >= 20) return { allowed: false, error: 'Growth tier is limited to 20 custom templates.' }
+
+  return { allowed: true }
+}
+
+/**
  * Creates a new checklist template for the current user's organization.
  */
 export async function createTemplate(
@@ -85,6 +106,13 @@ export async function createTemplate(
 
     // Use admin client to bypass RLS on checklist_templates
     const db = createAdminClient()
+    
+    // Check template limits before proceeding
+    const limitCheck = await checkTemplateLimits(orgId, db)
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.error, requiresUpgrade: true }
+    }
+
     const { data, error } = await db
       .from('checklist_templates')
       .insert({

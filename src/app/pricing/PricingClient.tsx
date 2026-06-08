@@ -57,6 +57,7 @@ function PricingClientInner({
   const searchParams = useSearchParams()
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null)
   const [initializing, setInitializing] = useState(true)
+  const [provisioning, setProvisioning] = useState(false)
   const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const errorParam = searchParams.get('error')
@@ -69,6 +70,13 @@ function PricingClientInner({
       token: paddleClientToken,
       eventCallback: function(data: any) {
         console.log('Paddle Event:', data)
+        if (data.name === 'checkout.completed') {
+          setProvisioning(true)
+          // Wait 3.5 seconds for the webhook to execute and propagate, then redirect
+          setTimeout(() => {
+            window.location.href = '/dashboard/billing?refresh=true'
+          }, 3500)
+        }
       }
     })
       .then((paddleInstance) => {
@@ -174,7 +182,20 @@ function PricingClientInner({
   }
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center relative">
+      {/* Full-screen Provisioning Overlay */}
+      {provisioning && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <span className="h-8 w-8 rounded-full border-4 border-zinc-300 border-t-zinc-900 animate-spin" />
+          <h3 className="font-mono text-xs uppercase tracking-widest text-[#09090B] font-extrabold mt-4 animate-pulse">
+            Provisioning your subscription...
+          </h3>
+          <p className="text-zinc-500 text-[10px] font-mono mt-1 uppercase">
+            Please wait a moment while we configure your account
+          </p>
+        </div>
+      )}
+
       {(errorMsg || errorParam) && (
         <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 text-sm font-mono font-medium max-w-2xl w-full text-center shadow-[4px_4px_0px_#FECACA]">
           {errorMsg || errorParam}

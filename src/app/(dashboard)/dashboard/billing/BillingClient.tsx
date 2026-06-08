@@ -64,6 +64,7 @@ function BillingClientInner({
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [initializing, setInitializing] = useState(true)
+  const [provisioning, setProvisioning] = useState(false)
   const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const errorParam = searchParams.get('error')
@@ -76,6 +77,13 @@ function BillingClientInner({
       token: paddleClientToken,
       eventCallback: function(data: any) {
         console.log('Paddle Event:', data)
+        if (data.name === 'checkout.completed') {
+          setProvisioning(true)
+          // Wait 3.5 seconds for the webhook to execute and propagate, then reload the page
+          setTimeout(() => {
+            window.location.href = '/dashboard/billing?refresh=true'
+          }, 3500)
+        }
       }
     })
       .then((paddleInstance) => {
@@ -165,6 +173,19 @@ function BillingClientInner({
 
   return (
     <div className="w-full max-w-5xl flex flex-col items-center mx-auto py-6 relative">
+      {/* Full-screen Provisioning Overlay */}
+      {provisioning && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <span className="h-8 w-8 rounded-full border-4 border-zinc-300 border-t-zinc-900 animate-spin" />
+          <h3 className="font-mono text-xs uppercase tracking-widest text-[#09090B] font-extrabold mt-4 animate-pulse">
+            Provisioning your subscription...
+          </h3>
+          <p className="text-zinc-500 text-[10px] font-mono mt-1 uppercase">
+            Please wait a moment while we configure your account
+          </p>
+        </div>
+      )}
+
       {/* Back Link positioned cleanly */}
       <div className="self-start mb-6">
         <Link
