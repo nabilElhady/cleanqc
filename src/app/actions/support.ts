@@ -50,5 +50,31 @@ export async function submitSupportMessage(
     return { error: 'Failed to send message. Please try again later or use the direct email.' }
   }
 
+  // Send email notification via Resend API
+  try {
+    const emailRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.RESEND_API_KEY || ''}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "contact@nabil-systems.xyz",
+        to: "nabil@nabil-systems.xyz",
+        subject: "New Contact Form Submission",
+        html: `<p><strong>From:</strong> ${validatedFields.data.name}</p>
+               <p><strong>Email:</strong> ${validatedFields.data.email}</p>
+               <p><strong>Message:</strong> ${validatedFields.data.message}</p>`
+      })
+    })
+
+    if (!emailRes.ok) {
+      const errText = await emailRes.text()
+      console.error('Failed to send contact notification email:', errText)
+    }
+  } catch (emailErr) {
+    console.error('Error calling Resend API:', emailErr)
+  }
+
   return { success: true }
 }
