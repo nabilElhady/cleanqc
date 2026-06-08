@@ -51,9 +51,9 @@ export default async function TemplatesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#E4E4E7]">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">Management</span>
-          <h1 className="text-3xl font-black tracking-tight text-[#09090B] mt-1">Checklists</h1>
+          <h1 className="text-3xl font-black tracking-tight text-[#09090B] mt-1">Standard Cleaning Templates</h1>
           <p className="text-[#71717A] mt-1 text-sm">
-            Build the step-by-step task lists your cleaners follow at every job.
+            Assign these pre-built workflows to your active dispatch routes.
           </p>
         </div>
         <CreateTemplateDialog />
