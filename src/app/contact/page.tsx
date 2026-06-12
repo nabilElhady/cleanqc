@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { submitSupportMessage } from '@/app/actions/support'
 import { Copy, Check, Send, AlertCircle, Sparkles } from 'lucide-react'
+import { BackButton } from '@/components/ui/back-button'
 
 export default function ContactPage() {
   const [state, formAction, isPending] = useActionState(submitSupportMessage, {})
@@ -26,6 +27,7 @@ export default function ContactPage() {
       <div className="relative z-10 max-w-3xl mx-auto py-16 px-6 sm:px-8">
         
         <div className="bg-white border border-border shadow-sm p-8 sm:p-12 mb-8">
+          <BackButton />
           <h1 className="text-3xl font-black tracking-tighter text-gray-900 mb-2">Contact Support</h1>
           <p className="text-muted-foreground mb-8">
             Need help with your Crewmark account? Send us a message and we'll get back to you as soon as possible.
