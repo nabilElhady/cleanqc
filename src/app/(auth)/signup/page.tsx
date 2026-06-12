@@ -89,6 +89,8 @@ function SignupForm() {
   )
 }
 
+import { BackButton } from '@/components/ui/back-button'
+
 export default function SignupPage() {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-[#FFFFFF] py-12 px-4 sm:px-6 relative">
@@ -96,6 +98,9 @@ export default function SignupPage() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
       <div className="relative w-full max-w-md z-10">
+        <div className="absolute -top-12 left-0">
+          <BackButton />
+        </div>
         <div className="flex flex-col items-center mb-8 text-center">
           <div className="h-12 w-12 bg-[#09090B] flex items-center justify-center mb-6">
             <Sparkles className="h-6 w-6 text-[#FFFFFF]" />

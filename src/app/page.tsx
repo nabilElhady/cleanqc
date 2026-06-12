@@ -283,15 +283,15 @@ export default function Home() {
 
           <CrispCard className="p-10 !shadow-none border border-border">
             <p className="text-xl leading-relaxed font-medium">
-              "We manage over 100 properties. Crewmark's custom checklist builder and GPS logging transformed how we manage dispatches. Our verification process takes minutes now instead of hours."
+              "Data integrity is our top priority. By leveraging PostgreSQL Row-Level Security, we ensure that every piece of operational data—from GPS logs to signed photos—is strictly isolated to your organization."
             </p>
             <div className="flex items-center gap-4 pt-6 border-t border-border mt-8">
-              <div className="h-12 w-12 bg-foreground flex items-center justify-center text-xs font-bold text-background uppercase tracking-wider">
-                JD
+              <div className="h-12 w-12 bg-foreground flex items-center justify-center text-background">
+                <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <span className="block text-sm font-bold">Julien D.</span>
-                <span className="block text-[11px] text-muted-foreground uppercase tracking-widest mt-1">Director of Operations, StayLux</span>
+                <span className="block text-sm font-bold">Enterprise-Grade Infrastructure</span>
+                <span className="block text-[11px] text-muted-foreground uppercase tracking-widest mt-1">Built for Scale & Reliability</span>
               </div>
             </div>
           </CrispCard>
