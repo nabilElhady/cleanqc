@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
 
+import { z } from 'zod'
+
 // Environment variables — set these in .env.local
 // SQUARE_APPLICATION_ID=sq0idp-...
 // SQUARE_APPLICATION_SECRET=sq0csp-...
@@ -83,7 +85,7 @@ async function getValidAccessToken(orgId: string): Promise<string | null> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Public types
+// Public types & Zod Schemas
 // ─────────────────────────────────────────────────────────────
 export interface LineItem {
   name: string
@@ -97,11 +99,30 @@ export interface InvoiceRequest {
   lineItems: LineItem[]
 }
 
+const LineItemSchema = z.object({
+  name: z.string().min(1, 'Item name is required').max(200).trim(),
+  amountInCents: z.number().int().positive('Amount must be positive'),
+})
+
+const InvoiceRequestSchema = z.object({
+  clientName: z.string().min(1, 'Client name is required').max(200).trim(),
+  clientEmail: z.string().email('Invalid client email').max(255).trim(),
+  lineItems: z.array(LineItemSchema).min(1, 'At least one line item is required').max(50),
+})
+
 // ─────────────────────────────────────────────────────────────
 // Main Server Action
 // ─────────────────────────────────────────────────────────────
 export async function createSquareInvoice(req: InvoiceRequest) {
   try {
+    // 1. Zod Input Validation (Crucial for Server Actions)
+    const validatedFields = InvoiceRequestSchema.safeParse(req)
+    if (!validatedFields.success) {
+      const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors).flat().join(' ')
+      return { error: `Validation Error: ${errorMsg}` }
+    }
+    const safeReq = validatedFields.data
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -140,7 +161,7 @@ export async function createSquareInvoice(req: InvoiceRequest) {
       query: {
         filter: {
           emailAddress: {
-            exact: req.clientEmail,
+            exact: safeReq.clientEmail,
           },
         },
       },
@@ -151,9 +172,9 @@ export async function createSquareInvoice(req: InvoiceRequest) {
     } else {
       const createResponse = await client.customers.create({
         idempotencyKey: randomUUID(),
-        givenName: req.clientName.split(' ')[0],
-        familyName: req.clientName.split(' ').slice(1).join(' ') || undefined,
-        emailAddress: req.clientEmail,
+        givenName: safeReq.clientName.split(' ')[0],
+        familyName: safeReq.clientName.split(' ').slice(1).join(' ') || undefined,
+        emailAddress: safeReq.clientEmail,
       })
       customerId = createResponse.customer?.id
     }
@@ -168,7 +189,7 @@ export async function createSquareInvoice(req: InvoiceRequest) {
       order: {
         locationId,
         customerId,
-        lineItems: req.lineItems.map(item => ({
+        lineItems: safeReq.lineItems.map(item => ({
           name: item.name,
           basePriceMoney: {
             amount: BigInt(item.amountInCents),

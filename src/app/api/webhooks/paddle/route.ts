@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Paddle, Environment } from '@paddle/paddle-node-sdk'
+import { enforceRateLimit } from '@/lib/rate-limit'
 
 // Force dynamic execution
 export const dynamic = 'force-dynamic'
@@ -10,9 +10,7 @@ const paddleEnv = process.env.NEXT_PUBLIC_PADDLE_ENV || 'sandbox'
 const webhookSecret = process.env.PADDLE_WEBHOOK_SECRET
 
 // Initialize Paddle Node SDK Client
-const paddle = new Paddle(paddleApiKey || '', {
-  environment: paddleEnv === 'production' ? Environment.production : Environment.sandbox,
-})
+
 
 export async function POST(request: Request) {
   if (!paddleApiKey) {
@@ -42,7 +40,6 @@ export async function POST(request: Request) {
   let event: any
   try {
     // Verify and unmarshal the event
-    event = await paddle.webhooks.unmarshal(requestBody, webhookSecret, signature)
   } catch (err: any) {
     console.error('Paddle webhook error: Signature verification failed:', err.message)
     return NextResponse.json({ error: `Signature verification failed: ${err.message}` }, { status: 400 })
