@@ -91,7 +91,7 @@ export default async function PricingPage() {
           </div>
 
           <p className="mt-8 text-zinc-500 text-xs font-mono">
-            Secure billing powered by Paddle. Cancel anytime.
+            Secure billing powered by Creem. Cancel anytime.
           </p>
         </div>
       </main>

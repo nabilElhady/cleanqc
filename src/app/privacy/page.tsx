@@ -22,7 +22,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-xl font-semibold mb-2">2. Payment Processing</h2>
           <p>
-            We do not store your credit card information. All payments are processed securely by our Merchant of Record, Paddle. Financial data is handled in accordance with Paddle's strict privacy and security policies.
+            We do not store your credit card information. All payments are processed securely by our Merchant of Record, Creem. Financial data is handled in accordance with Creem's strict privacy and security policies.
           </p>
         </section>
 
