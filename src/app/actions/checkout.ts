@@ -66,7 +66,6 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
     body: JSON.stringify({
       product_id: creemPlanId,
       success_url: `${domain}/dashboard/billing?success=true`,
-      cancel_url: `${domain}/pricing?canceled=true`,
       metadata: {
         orgId: profile.org_id,
         userId: user.id
