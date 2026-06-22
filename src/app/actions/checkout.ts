@@ -50,7 +50,8 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
   const domain = `${protocol}://${host}`
 
   // Determine the correct API endpoint based on the key prefix
-  const isTestMode = creemApiKey.startsWith('creem_test_')
+  const safeApiKey = creemApiKey.trim()
+  const isTestMode = safeApiKey.startsWith('creem_test_')
   const apiUrl = isTestMode 
     ? 'https://test-api.creem.io/v1/checkouts' 
     : 'https://api.creem.io/v1/checkouts'
@@ -60,10 +61,10 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': creemApiKey,
+      'x-api-key': safeApiKey,
     },
     body: JSON.stringify({
-      plan_id: creemPlanId,
+      product_id: creemPlanId,
       success_url: `${domain}/dashboard/billing?success=true`,
       cancel_url: `${domain}/pricing?canceled=true`,
       metadata: {
