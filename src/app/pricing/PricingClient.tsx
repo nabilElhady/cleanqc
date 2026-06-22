@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { initializePaddle, Paddle } from '@paddle/paddle-js'
+import { createCheckoutSession } from '@/app/actions/checkout'
 
 interface PricingClientProps {
   isAuthenticated: boolean
@@ -10,9 +10,6 @@ interface PricingClientProps {
   orgId: string | null
   subscriptionStatus: string | null
   features: string[]
-  paddleClientToken: string
-  paddlePriceId: string // Fallback, we'll use environment variables for tiers
-  paddleEnv: string
 }
 
 const TIERS = [
@@ -22,7 +19,6 @@ const TIERS = [
     price: 19,
     description: 'Perfect for small teams getting started with organized dispatching.',
     features: ['1 Manager', 'Up to 5 Crew Members', 'Basic templates', 'Job dispatch'],
-    priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_STARTER || 'pri_starter_789',
     highlight: false,
   },
   {
@@ -31,7 +27,6 @@ const TIERS = [
     price: 49,
     description: 'Our most popular plan. Crush legacy enterprise tools with lightning speed.',
     features: ['3 Managers', 'Up to 20 Crew Members', 'Custom templates', 'Advanced QC reports', 'Zero-Latency Mobile QC Experience'],
-    priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_GROWTH || 'pri_growth_456',
     highlight: true,
     badge: 'Competitor Equivalent: $225/mo',
   },
@@ -41,7 +36,6 @@ const TIERS = [
     price: 99,
     description: 'For large operations requiring limitless expansion.',
     features: ['Unlimited Managers', 'Unlimited Crew Members'],
-    priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_SCALE || 'pri_scale_123',
     highlight: false,
   },
 ]
@@ -50,51 +44,21 @@ function PricingClientInner({
   isAuthenticated,
   userRole,
   subscriptionStatus,
-  paddleClientToken,
-  paddleEnv,
 }: PricingClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null)
-  const [initializing, setInitializing] = useState(true)
-  const [provisioning, setProvisioning] = useState(false)
-  const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  
   const errorParam = searchParams.get('error')
+  const canceledParam = searchParams.get('canceled')
 
-  // Initialize Paddle.js using official loader
-  useEffect(() => {
-    setInitializing(true)
-    initializePaddle({
-      environment: paddleEnv === 'sandbox' ? 'sandbox' : 'production',
-      token: paddleClientToken,
-      eventCallback: function(data: any) {
-        console.log('Paddle Event:', data)
-        if (data.name === 'checkout.completed') {
-          setProvisioning(true)
-          // Wait 3.5 seconds for the webhook to execute and propagate, then redirect
-          setTimeout(() => {
-            window.location.href = '/dashboard/billing?refresh=true'
-          }, 3500)
-        }
-      }
-    })
-      .then((paddleInstance) => {
-        if (paddleInstance) setPaddle(paddleInstance)
-        setInitializing(false)
-      })
-      .catch((err) => {
-        console.error('Error initializing Paddle:', err)
-        setErrorMsg('Failed to load the billing module. Please refresh the page.')
-        setInitializing(false)
-      })
-  }, [paddleClientToken, paddleEnv])
-
-  const handleSubscribe = async (priceId: string) => {
+  const handleSubscribe = async (tierId: 'starter' | 'growth' | 'scale') => {
     setErrorMsg(null)
 
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/pricing?trigger=checkout&priceId=${priceId}`)
+      router.push(`/login?redirect=/pricing?trigger=checkout&tier=${tierId}`)
       return
     }
 
@@ -103,58 +67,40 @@ function PricingClientInner({
       return
     }
 
-    if (!paddle) {
-      setErrorMsg('Billing engine is still loading. Please try again in a moment.')
-      return
-    }
+    setLoadingPriceId(tierId)
 
-    try {
-      setLoadingPriceId(priceId)
-
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate checkout.')
+    startTransition(async () => {
+      try {
+        const { url } = await createCheckoutSession(tierId)
+        
+        if (url) {
+          // Hard redirect to the Creem hosted checkout overlay/page
+          window.location.href = url
+        }
+      } catch (err: any) {
+        console.error('Checkout error:', err)
+        setErrorMsg(err.message || 'An unexpected error occurred. Please try again.')
+        setLoadingPriceId(null)
       }
-
-      if (data.transactionId) {
-        paddle.Checkout.open({
-          transactionId: data.transactionId,
-          settings: { displayMode: 'overlay', theme: 'light' }
-        })
-      } else {
-        throw new Error('No transaction ID received from server.')
-      }
-    } catch (err: any) {
-      console.error('Checkout error:', err)
-      setErrorMsg(err.message || 'An unexpected error occurred. Please try again.')
-    } finally {
-      setLoadingPriceId(null)
-    }
+    })
   }
 
-  // Automatically trigger subscribe if trigger query param is set
+  // Automatically trigger subscribe if trigger query param is set after login
   useEffect(() => {
     const trigger = searchParams.get('trigger')
-    const triggerPriceId = searchParams.get('priceId')
+    const triggerTier = searchParams.get('tier') as 'starter' | 'growth' | 'scale'
     
-    if (trigger === 'checkout' && triggerPriceId && isAuthenticated && userRole === 'owner' && paddle && !initializing) {
+    if (trigger === 'checkout' && triggerTier && isAuthenticated && userRole === 'owner') {
       const newParams = new URLSearchParams(window.location.search)
       newParams.delete('trigger')
-      newParams.delete('priceId')
+      newParams.delete('tier')
       const searchString = newParams.toString()
       const cleanPath = window.location.pathname + (searchString ? `?${searchString}` : '')
       router.replace(cleanPath)
 
-      handleSubscribe(triggerPriceId)
+      handleSubscribe(triggerTier)
     }
-  }, [searchParams, isAuthenticated, userRole, paddle, initializing])
+  }, [searchParams, isAuthenticated, userRole, router])
 
   const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
 
@@ -183,17 +129,10 @@ function PricingClientInner({
 
   return (
     <div className="w-full flex flex-col items-center relative">
-      {/* Full-screen Provisioning Overlay */}
-      {provisioning && (
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-          <span className="h-8 w-8 rounded-full border-4 border-zinc-300 border-t-zinc-900 animate-spin" />
-          <h3 className="font-mono text-xs uppercase tracking-widest text-[#09090B] font-extrabold mt-4 animate-pulse">
-            Provisioning your subscription...
-          </h3>
-          <p className="text-zinc-500 text-[10px] font-mono mt-1 uppercase">
-            Please wait a moment while we configure your account
-          </p>
-        </div>
+      {canceledParam && (
+         <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm font-mono font-medium max-w-2xl w-full text-center shadow-[4px_4px_0px_#FEF08A]">
+           Checkout canceled. You have not been charged.
+         </div>
       )}
 
       {(errorMsg || errorParam) && (
@@ -250,15 +189,15 @@ function PricingClientInner({
 
             <div className="mt-auto">
               <button
-                onClick={() => handleSubscribe(tier.priceId)}
-                disabled={initializing || loadingPriceId !== null}
+                onClick={() => handleSubscribe(tier.id as 'starter' | 'growth' | 'scale')}
+                disabled={isPending || loadingPriceId !== null}
                 className={`w-full py-4 px-6 font-mono text-sm uppercase tracking-wider font-bold transition-all flex items-center justify-center border shadow-[2px_2px_0px_#FFFFFF] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed ${
                   tier.highlight 
                     ? 'bg-[#09090B] text-white hover:bg-zinc-800 border-[#09090B]' 
                     : 'bg-white text-[#09090B] hover:bg-zinc-50 border-[#09090B]'
                 }`}
               >
-                {loadingPriceId === tier.priceId ? 'Processing...' : initializing ? 'Loading...' : 'Select Plan'}
+                {loadingPriceId === tier.id ? 'Loading Checkout...' : 'Select Plan'}
               </button>
             </div>
           </div>

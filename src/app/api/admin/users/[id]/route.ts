@@ -32,8 +32,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   // Clear foreign keys preventing deletion
-  await db.from('jobs').update({ assigned_to: null }).eq('assigned_to', id)
-  await db.from('admin_audit_log').update({ admin_id: null }).eq('admin_id', id)
+  await db.from('jobs').update({ assigned_crew_id: null }).eq('assigned_crew_id', id)
+  await db.from('admin_audit_log').update({ actor_id: null }).eq('actor_id', id)
 
   // Delete from Auth (this cascades to profiles and other tables due to foreign key constraints if set up)
   const { error: deleteError } = await db.auth.admin.deleteUser(id)

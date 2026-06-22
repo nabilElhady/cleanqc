@@ -84,9 +84,6 @@ export default async function PricingPage() {
               orgId={orgId}
               subscriptionStatus={subscriptionStatus}
               features={features}
-              paddleClientToken={process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || ''}
-              paddlePriceId={process.env.NEXT_PUBLIC_PADDLE_PRICE_ID || ''}
-              paddleEnv={process.env.NEXT_PUBLIC_PADDLE_ENV || 'sandbox'}
             />
           </div>
 
