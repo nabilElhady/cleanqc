@@ -13,13 +13,13 @@ export async function POST(request: NextRequest) {
   if (rateLimitResponse) return rateLimitResponse
 
   if (!CREEM_WEBHOOK_TEST) {
-    console.error('Creem Webhook Error: CREEM_WEBHOOK_TEST is not configured.')
+    console.error('[Creem Webhook] CREEM_WEBHOOK_TEST is not configured.')
     return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
   }
 
-  const signature = request.headers.get('x-creem-signature') || request.headers.get('creem-signature') || ''
+  const signature = request.headers.get('creem-signature') || request.headers.get('x-creem-signature') || ''
   if (!signature) {
-    console.error('Creem Webhook Error: Missing signature header.')
+    console.error('[Creem Webhook] Missing signature header.')
     return NextResponse.json({ error: 'Missing signature' }, { status: 401 })
   }
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   if (signature !== expectedSignature) {
     const ip = request.headers.get('x-forwarded-for') || 'Unknown IP'
-    console.error(`🚨 SECURITY ALERT: Spoofed Creem webhook request detected from IP ${ip}`)
+    console.error(`🚨 [Creem Webhook] SECURITY ALERT: Spoofed signature detected from IP ${ip}`)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
@@ -48,61 +48,83 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
   }
 
-  const eventId = event.id || ''
-  const eventType = event.type || ''
+  const eventId = event.id || event.eventId || ''
+  const eventType = event.eventType || event.type || ''
   const data = event.data || {}
-  
-  const orgId = data.metadata?.orgId || data.orgId
 
   if (!eventId) {
     return NextResponse.json({ error: 'Missing event ID' }, { status: 400 })
   }
 
-  const supabase = createAdminClient()
-
-  // Idempotency Check
-  const { error: insertError } = await supabase
-    .from('processed_webhooks')
-    .insert([{ event_id: eventId }])
-
-  if (insertError) {
-    if (insertError.code === '23505') {
-      console.log(`[Creem Webhook] Event ${eventId} was already processed.`)
-      return NextResponse.json({ success: true, message: 'Already processed' })
-    }
-    return NextResponse.json({ error: 'Database error during idempotency check' }, { status: 500 })
+  // We only process billing/subscription events
+  const isBillingEvent = eventType.startsWith('subscription.') || eventType.startsWith('payment.') || eventType.startsWith('checkout.')
+  if (!isBillingEvent) {
+    return NextResponse.json({ success: true, message: 'Ignored non-billing event' })
   }
 
-  console.log(`[Creem Webhook] Processing Event: ${eventType} (ID: ${eventId})`)
+  const supabase = createAdminClient()
 
   try {
-    if (orgId && (eventType.startsWith('subscription.') || eventType.startsWith('payment.'))) {
-      let statusToSet = data.status || 'active'
-      let tier = 'starter'
+    // 1. Resolve Org ID (checking metadata first, then falling back to customer email search)
+    let resolvedOrgId = data.metadata?.orgId || data.metadata?.org_id || data.orgId || data.org_id
 
-      const planId = data.plan_id || data.product_id || ''
-      if (planId === process.env.CREEM_PLAN_SCALE_TEST) tier = 'scale'
-      else if (planId === process.env.CREEM_PLAN_GROWTH_TEST) tier = 'growth'
-
-      const updatePayload = {
-        subscription_status: statusToSet,
-        subscription_tier: tier,
-        creem_subscription_id: data.subscription_id || data.id,
-        creem_last_event_time: event.created_at || new Date().toISOString()
+    if (!resolvedOrgId) {
+      const email = data.customer?.email || data.email || data.customer_email || data.customer?.customer_email
+      if (email) {
+        console.log(`[Creem Webhook] Attempting fallback resolution for email: ${email}`)
+        const { data: authUser, error: authUserErr } = await supabase.auth.admin.getUserByEmail(email)
+        if (authUser?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', authUser.user.id)
+            .single()
+          resolvedOrgId = profile?.org_id
+        }
       }
-
-      const { error: dbError } = await supabase
-        .from('organizations')
-        .update(updatePayload)
-        .eq('id', orgId)
-
-      if (dbError) throw dbError
-      console.log(`[Creem Webhook] Successfully updated Org ${orgId}`)
     }
 
-    return NextResponse.json({ success: true })
+    if (!resolvedOrgId) {
+      console.error(`[Creem Webhook] Failed to resolve orgId for event ${eventId}. Returning 422 to trigger retry.`)
+      // Returning 422 Unprocessable Entity tells Creem to retry later (e.g. if profile creation is racing)
+      return NextResponse.json({ error: 'Org ID context could not be resolved' }, { status: 422 })
+    }
+
+    // 2. Parse status, tier and subscription ID
+    let statusToSet = data.status || 'active'
+    let tier = 'starter'
+
+    const planId = data.plan_id || data.product_id || data.product?.id || ''
+    if (planId === process.env.CREEM_PLAN_SCALE_TEST || planId === process.env.CREEM_PLAN_SCALE) {
+      tier = 'scale'
+    } else if (planId === process.env.CREEM_PLAN_GROWTH_TEST || planId === process.env.CREEM_PLAN_GROWTH) {
+      tier = 'growth'
+    }
+
+    const creemSubscriptionId = data.subscription_id || data.subscriptionId || data.id || ''
+    const eventCreatedAt = event.created_at || event.createdAt || new Date().toISOString()
+
+    console.log(`[Creem Webhook] Processing event ${eventType} for Org ${resolvedOrgId}. Subscription: ${creemSubscriptionId}`)
+
+    // 3. Execute atomic transaction via Database RPC function
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('process_creem_webhook_event', {
+      p_event_id: eventId,
+      p_org_id: resolvedOrgId,
+      p_subscription_status: statusToSet,
+      p_subscription_tier: tier,
+      p_creem_subscription_id: creemSubscriptionId,
+      p_event_created_at: eventCreatedAt
+    })
+
+    if (rpcError) {
+      console.error('[Creem Webhook] RPC Execution Error:', rpcError)
+      throw new Error(`RPC failed: ${rpcError.message}`)
+    }
+
+    console.log(`[Creem Webhook] Atomic transaction completed successfully for event ${eventId}`)
+    return NextResponse.json({ success: true, result: rpcResult })
   } catch (err: any) {
-    console.error('[Creem Webhook] Processing Error:', err)
+    console.error('[Creem Webhook] Failed to process webhook:', err)
     return NextResponse.json({ error: err.message || 'Internal handler error' }, { status: 500 })
   }
 }
