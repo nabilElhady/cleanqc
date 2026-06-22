@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
   }
 
-  const signature = request.headers.get('x-creem-signature') || ''
+  const signature = request.headers.get('x-creem-signature') || request.headers.get('creem-signature') || ''
   if (!signature) {
     console.error('Creem Webhook Error: Missing signature header.')
     return NextResponse.json({ error: 'Missing signature' }, { status: 401 })
