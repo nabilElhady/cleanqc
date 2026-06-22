@@ -49,8 +49,14 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
   const protocol = headersList.get('x-forwarded-proto') || 'https'
   const domain = `${protocol}://${host}`
 
+  // Determine the correct API endpoint based on the key prefix
+  const isTestMode = creemApiKey.startsWith('creem_test_')
+  const apiUrl = isTestMode 
+    ? 'https://test-api.creem.io/v1/checkouts' 
+    : 'https://api.creem.io/v1/checkouts'
+
   // Call Creem's API to generate a secure Checkout Session
-  const response = await fetch('https://api.creem.io/v1/checkouts', {
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
