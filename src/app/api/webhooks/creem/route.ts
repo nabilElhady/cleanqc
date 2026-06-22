@@ -72,14 +72,17 @@ export async function POST(request: NextRequest) {
       const email = data.customer?.email || data.email || data.customer_email || data.customer?.customer_email
       if (email) {
         console.log(`[Creem Webhook] Attempting fallback resolution for email: ${email}`)
-        const { data: authUser, error: authUserErr } = await supabase.auth.admin.getUserByEmail(email)
-        if (authUser?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('org_id')
-            .eq('id', authUser.user.id)
-            .single()
-          resolvedOrgId = profile?.org_id
+        const { data: listData, error: listErr } = await supabase.auth.admin.listUsers()
+        if (!listErr && listData?.users) {
+          const matchedUser = listData.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+          if (matchedUser) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('org_id')
+              .eq('id', matchedUser.id)
+              .single()
+            resolvedOrgId = profile?.org_id
+          }
         }
       }
     }
