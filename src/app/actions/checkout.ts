@@ -39,9 +39,9 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
     throw new Error('Pricing configuration error. Missing Creem Plan ID.')
   }
 
-  const creemApiKey = process.env.CREEM_API_KEY
+  const creemApiKey = process.env.TEST_KEY
   if (!creemApiKey) {
-    throw new Error('Server misconfiguration: Missing Creem API Key.')
+    throw new Error('Server misconfiguration: Missing TEST_KEY for Creem API.')
   }
 
   const headersList = await headers()
