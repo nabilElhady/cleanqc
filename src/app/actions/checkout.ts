@@ -80,11 +80,11 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
     throw new Error('Failed to securely initialize checkout session.')
   }
 
-  const { data } = await response.json()
+  const checkoutData = await response.json()
   
-  if (!data?.url) {
+  if (!checkoutData?.checkout_url) {
     throw new Error('Creem API did not return a valid checkout URL.')
   }
 
-  return { url: data.url }
+  return { url: checkoutData.checkout_url }
 }
