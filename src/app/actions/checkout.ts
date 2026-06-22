@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 
 export async function createCheckoutSession(planType: 'starter' | 'growth' | 'scale') {
@@ -11,8 +12,9 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
     throw new Error('You must be logged in to subscribe.')
   }
 
-  // Verify tenant ownership
-  const { data: profile } = await supabase
+  // Verify tenant ownership using Admin DB to bypass RLS blocking the org_id
+  const adminDb = createAdminClient()
+  const { data: profile } = await adminDb
     .from('profiles')
     .select('org_id, role')
     .eq('id', user.id)
