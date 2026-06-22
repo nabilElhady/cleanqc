@@ -105,7 +105,16 @@ export async function POST(request: NextRequest) {
     }
 
     const creemSubscriptionId = data.subscription_id || data.subscriptionId || data.id || ''
-    const eventCreatedAt = event.created_at || event.createdAt || new Date().toISOString()
+    
+    // Convert Unix millisecond timestamp or string date to ISO string safely for Postgres
+    const rawCreatedAt = event.created_at || event.createdAt
+    let eventCreatedAt: string
+    if (rawCreatedAt) {
+      const parsedDate = new Date(typeof rawCreatedAt === 'number' ? rawCreatedAt : rawCreatedAt)
+      eventCreatedAt = isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString()
+    } else {
+      eventCreatedAt = new Date().toISOString()
+    }
 
     console.log(`[Creem Webhook] Processing event ${eventType} for Org ${resolvedOrgId}. Subscription: ${creemSubscriptionId}`)
 
