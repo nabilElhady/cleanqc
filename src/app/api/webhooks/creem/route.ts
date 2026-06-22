@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const eventId = event.id || event.eventId || ''
   const eventType = event.eventType || event.type || ''
-  const data = event.data || {}
+  const data = event.object || event.data || {}
 
   if (!eventId) {
     return NextResponse.json({ error: 'Missing event ID' }, { status: 400 })
