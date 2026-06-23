@@ -70,12 +70,24 @@ const managerNavItems: NavItem[] = [
 export default function DashboardLayoutClient({
   children,
   isAdmin,
+  role,
 }: {
   children: React.ReactNode
   isAdmin?: boolean
+  role?: string | null
 }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+
+  // Filter out Billing and Settings for managers
+  const filteredNavItems = managerNavItems.filter(item => {
+    if (role === 'manager') {
+      const isBilling = item.href === '/dashboard/billing' || item.name.toLowerCase() === 'billing'
+      const isSettings = item.href.includes('settings') || item.name.toLowerCase().includes('settings')
+      if (isBilling || isSettings) return false
+    }
+    return true
+  })
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-[#FAFAFA] text-[#09090B]">
@@ -102,7 +114,7 @@ export default function DashboardLayoutClient({
 
       {/* Main Nav */}
       <nav className="flex-1 px-4 py-6 space-y-0.5">
-        {managerNavItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const Icon = item.icon
           const isActive =
             item.href === '/dashboard'

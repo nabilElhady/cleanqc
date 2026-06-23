@@ -350,7 +350,7 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
     // Verify target profile is in the same organization
     const { data: targetProfile, error: targetError } = await supabaseAdmin
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, crew_passcode')
       .eq('id', parsedCrewMemberId)
       .single()
 
@@ -393,11 +393,12 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
       return { success: false, error: `Failed to delete profile record: ${deleteProfileError.message}` }
     }
 
-    // 3. Delete the auth user
-    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(parsedCrewMemberId)
-
-    if (deleteUserError) {
-      return { success: false, error: `Failed to delete user account: ${deleteUserError.message}` }
+    // 3. Delete the auth user (only if they are not a passcode-only crew member)
+    if (!targetProfile.crew_passcode) {
+      const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(parsedCrewMemberId)
+      if (deleteUserError && deleteUserError.status !== 404) {
+        return { success: false, error: `Failed to delete user account: ${deleteUserError.message}` }
+      }
     }
 
     revalidatePath('/team')
@@ -407,5 +408,131 @@ export async function deleteCrewMember(crewMemberId: string): Promise<ActionResp
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }
+  }
+}
+
+/**
+ * Generates an easy-to-read, unique, random 6-10 character alphanumeric passcode.
+ * Excludes ambiguous look-alike characters (like I, 1, l, O, 0, S, 5, Z, 2, B, 8).
+ */
+async function generateUniqueCrewCode(supabaseAdmin: any): Promise<string> {
+  const chars = 'ACDEFGHJKLMNPQRTUVWXY34679'
+  const lookalikes: Record<string, string[]> = {
+    'G': ['6'], '6': ['G', 'C'],
+    'Q': ['9'], '9': ['Q'],
+    'C': ['6']
+  }
+  let isUnique = false
+  let code = ''
+  
+  while (!isUnique) {
+    const length = Math.floor(Math.random() * (10 - 6 + 1)) + 6
+    code = ''
+    for (let i = 0; i < length; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    
+    // Validate adjacent lookalikes
+    let hasLookalikeAdjacent = false
+    for (let i = 0; i < code.length - 1; i++) {
+      const char = code[i]
+      const nextChar = code[i + 1]
+      if (lookalikes[char] && lookalikes[char].includes(nextChar)) {
+        hasLookalikeAdjacent = true
+        break
+      }
+    }
+    
+    if (hasLookalikeAdjacent) {
+      continue
+    }
+    
+    // Ensure this code isn't actively assigned to someone else
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('crew_passcode', code)
+      .maybeSingle()
+      
+    if (!data) isUnique = true
+  }
+  
+  return code
+}
+
+/**
+ * Creates a crew profile directly with a passcode and no Auth user record
+ */
+export async function registerCrewMember(name: string, companyId: string, passcode?: string): Promise<ActionResponse & { passcode?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+    if (authError || !currentUser) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    const supabaseAdmin = createAdminClient()
+
+    // Verify caller is owner or manager
+    const { data: callerProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUser.id)
+      .single()
+
+    if (!callerProfile || (callerProfile.role !== 'owner' && callerProfile.role !== 'manager')) {
+      return { success: false, error: 'Only owners or managers can add crew members.' }
+    }
+
+    // Check seat limits
+    const limitCheck = await checkSeatLimits(companyId, 'crew', supabaseAdmin)
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.error, requiresUpgrade: true }
+    }
+
+    let code = passcode?.trim().toUpperCase() || ''
+    if (code) {
+      // Validate length between 6 and 10
+      if (code.length < 6 || code.length > 10) {
+        return { success: false, error: 'Passcode must be between 6 and 10 characters.' }
+      }
+      // Ensure correct format (alphanumeric only)
+      if (/[^A-Z0-9]/.test(code)) {
+        return { success: false, error: 'Passcode can only contain uppercase letters and numbers.' }
+      }
+      
+      // Ensure this code isn't actively assigned to someone else
+      const { data } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('crew_passcode', code)
+        .maybeSingle()
+        
+      if (data) {
+        return { success: false, error: 'This passcode is already taken. Please choose another or generate one.' }
+      }
+    } else {
+      code = await generateUniqueCrewCode(supabaseAdmin)
+    }
+    
+    // Generate a random UUID for the profile (since there is no auth user)
+    const newProfileId = crypto.randomUUID()
+
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: newProfileId,
+        full_name: name,
+        org_id: companyId,
+        role: 'crew',
+        crew_passcode: code
+      })
+      
+    if (error) throw error
+    
+    revalidatePath('/dashboard/team')
+    return { success: true, passcode: code }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to register crew member.' }
   }
 }

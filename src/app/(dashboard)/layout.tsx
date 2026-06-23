@@ -24,7 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <SubscriptionProvider initialStatus={subscriptionStatus} isAdmin={isAdmin} isOwner={isOwner}>
       <div className="flex flex-col min-h-screen">
         <ReadOnlyBanner />
-        <DashboardLayoutClient isAdmin={isAdmin}>
+        <DashboardLayoutClient isAdmin={isAdmin} role={role}>
           {children}
         </DashboardLayoutClient>
         <UpgradeModal />

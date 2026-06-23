@@ -1,8 +1,9 @@
 import * as React from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, MapPin, ChevronRight, ClipboardList } from 'lucide-react'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,31 +24,53 @@ export default async function CrewJobsPage() {
   // 1. Authenticate user
   const {
     data: { user },
-    error: authError,
   } = await supabase.auth.getUser()
 
-  if (authError || !user) {
+  const cookieStore = await cookies()
+  const crewToken = cookieStore.get('crew_session_token')?.value
+  const activeUserId = user?.id || crewToken
+
+  if (!activeUserId) {
     redirect('/login')
   }
 
-  // 2. Fetch assigned pending and in-progress jobs
-  const { data: rawJobs, error: jobsError } = await supabase
+  // 2. Fetch assigned pending and in-progress jobs (using admin client to bypass RLS for passcode users)
+  const db = createAdminClient()
+  const { data: rawJobs, error: jobsError } = await db
     .from('jobs')
-    .select(`
-      id,
-      title,
-      location,
-      scheduled_at,
-      status,
-      checklist_templates!template_id (
-        name
-      )
-    `)
-    .eq('assigned_to', user.id)
+    .select('id, title, location, scheduled_at, status, template_id')
+    .eq('assigned_to', activeUserId)
     .in('status', ['pending', 'in_progress'])
     .order('scheduled_at', { ascending: true })
 
-  const jobs = (rawJobs || []) as unknown as JobWithTemplate[]
+  let jobs: JobWithTemplate[] = []
+
+  if (rawJobs && rawJobs.length > 0) {
+    const templateIds = Array.from(new Set(rawJobs.map(j => j.template_id).filter(Boolean)))
+    let templatesMap: Record<string, string> = {}
+    
+    if (templateIds.length > 0) {
+      const { data: templates } = await db
+        .from('checklist_templates')
+        .select('id, name')
+        .in('id', templateIds)
+      
+      if (templates) {
+        templates.forEach(t => {
+          templatesMap[t.id] = t.name
+        })
+      }
+    }
+
+    jobs = rawJobs.map(j => ({
+      id: j.id,
+      title: j.title,
+      location: j.location,
+      scheduled_at: j.scheduled_at,
+      status: j.status,
+      checklist_templates: j.template_id ? { name: templatesMap[j.template_id] || '' } : null
+    }))
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pt-4 pb-12 bg-[#FFFFFF]">

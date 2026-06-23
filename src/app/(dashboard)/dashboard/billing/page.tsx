@@ -1,7 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { createPortalSession } from '@/app/actions/checkout'
-import { redirect } from 'next/navigation'
+import ManageBillingButton from './ManageBillingButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,18 +98,7 @@ export default async function DashboardBillingPage() {
               Your organization is currently on an active premium plan. Manage your payments, invoices, or changes directly via our secure Customer Portal.
             </p>
             <div className="pt-2">
-              <form action={async () => {
-                'use server'
-                const { url } = await createPortalSession()
-                redirect(url)
-              }}>
-                <button
-                  type="submit"
-                  className="inline-block bg-[#09090B] text-white font-mono text-xs tracking-widest uppercase px-6 py-3 font-bold border border-[#09090B] hover:bg-white hover:text-[#09090B] transition-colors rounded-none cursor-pointer"
-                >
-                  Manage Subscription
-                </button>
-              </form>
+              <ManageBillingButton />
             </div>
           </div>
         ) : (

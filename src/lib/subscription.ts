@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { cache } from 'react'
+import { cookies } from 'next/headers'
 
 export const getSubscriptionServer = cache(async () => {
   // Use cookie-based client ONLY for auth identity check
@@ -8,7 +9,12 @@ export const getSubscriptionServer = cache(async () => {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  const cookieStore = await cookies()
+  const crewToken = cookieStore.get('crew_session_token')?.value
+
+  const activeUserId = user?.id || crewToken
+
+  if (!activeUserId) {
     return {
       subscriptionStatus: null,
       isPremium: false,
@@ -24,7 +30,7 @@ export const getSubscriptionServer = cache(async () => {
   const { data: profile } = await db
     .from('profiles')
     .select('org_id, role, is_superadmin, suspended_at, organizations(subscription_status)')
-    .eq('id', user.id)
+    .eq('id', activeUserId)
     .single()
 
   const isAdmin = !!profile?.is_superadmin

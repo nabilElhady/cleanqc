@@ -3,8 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { z } from 'zod'
+import { sendTransactionalEmail } from '@/lib/email/resend'
 
 export type FormState = {
   success?: boolean
@@ -221,6 +222,70 @@ export async function signUpWithOwner(
       return { error: upsertError.message }
     }
 
+    // Send transactional welcome email
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://getcrewmark.com'
+      
+      await sendTransactionalEmail({
+        to: email,
+        subject: 'Welcome to Crewmark!',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a;">
+            <div style="margin-bottom: 28px;">
+              <span style="font-size: 20px; font-weight: 900; letter-spacing: -0.05em; color: #0f172a;">Crewmark</span>
+            </div>
+            
+            <h2 style="color: #0f172a; margin-top: 0; margin-bottom: 12px; font-size: 22px; font-weight: 800; tracking: -0.025em;">
+              Let's get dispatching, ${name}!
+            </h2>
+            
+            <p style="color: #475569; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 20px;">
+              Thanks for creating a Crewmark account. Your organization, <strong>${orgName}</strong>, is now active and ready for operations.
+            </p>
+
+            <p style="color: #475569; font-size: 15px; line-height: 24px; margin-bottom: 24px;">
+              Here are the first three things you can do to get your commercial cleaning dispatching running smoothly:
+            </p>
+
+            <div style="margin-bottom: 28px;">
+              <div style="margin-bottom: 16px;">
+                <h4 style="margin: 0 0 4px 0; color: #0f172a; font-size: 14px; font-weight: 700;">1. Create Checklists</h4>
+                <p style="margin: 0; color: #475569; font-size: 13.5px; line-height: 20px;">
+                  Build detailed cleaning templates with custom checklist tasks, instruction fields, and mandatory photo verification targets.
+                </p>
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <h4 style="margin: 0 0 4px 0; color: #0f172a; font-size: 14px; font-weight: 700;">2. Invite Your Crew</h4>
+                <p style="margin: 0; color: #475569; font-size: 13.5px; line-height: 20px;">
+                  Add crew members to your organization settings so they can log in via their mobile app, view scheduled jobs, and submit checklists.
+                </p>
+              </div>
+
+              <div>
+                <h4 style="margin: 0 0 4px 0; color: #0f172a; font-size: 14px; font-weight: 700;">3. Dispatch Jobs</h4>
+                <p style="margin: 0; color: #475569; font-size: 13.5px; line-height: 20px;">
+                  Schedule and dispatch cleaning sessions directly to your crew. Get real-time updates and proof-of-work compliance reports instantly.
+                </p>
+              </div>
+            </div>
+            
+            <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 6px; font-size: 14px; text-align: center;">
+              Go to Your Dashboard
+            </a>
+            
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 36px 0;" />
+            
+            <p style="color: #94a3b8; font-size: 12px; line-height: 18px; margin: 0;">
+              Have questions or need help setting up your team? Reach out to us anytime at <a href="mailto:support@getcrewmark.com" style="color: #0f172a; text-decoration: underline;">support@getcrewmark.com</a>.
+            </p>
+          </div>
+        `
+      })
+    } catch (emailErr) {
+      console.error('[signUpWithOwner] Welcome email dispatch failed:', emailErr)
+    }
+
     // If email confirmation is enabled, session will be null and the user must verify their email first
     if (!authData.session) {
       return { success: true, needsConfirmation: true }
@@ -241,5 +306,40 @@ export async function signUpWithOwner(
 export async function signOut(): Promise<void> {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  const cookieStore = await cookies()
+  cookieStore.delete('crew_session_token')
   redirect('/login')
+}
+
+/**
+ * Validates a crew member passcode and starts a secure stateless crew session.
+ */
+export async function authenticateCrewMember(passcode: string) {
+  const adminDb = createAdminClient()
+
+  // 1. Look up the profile matching this unique code
+  const { data: profile, error } = await adminDb
+    .from('profiles')
+    .select('id, full_name, role')
+    .eq('crew_passcode', passcode.trim())
+    .maybeSingle()
+    
+  if (error || !profile) {
+    return { success: false, error: 'Invalid access code. Please check with your manager.' }
+  }
+
+  if (profile.role !== 'crew') {
+    return { success: false, error: 'Access denied. Code only valid for crew members.' }
+  }
+  
+  // 2. Set a secure HTTP-only crew token session cookie valid for 30 days
+  const cookieStore = await cookies()
+  cookieStore.set('crew_session_token', profile.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 24 * 30 
+  })
+  
+  redirect('/crew/jobs')
 }

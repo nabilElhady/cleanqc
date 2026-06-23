@@ -42,34 +42,50 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const crewToken = request.cookies.get('crew_session_token')?.value
   const protectedPaths = ['/dashboard', '/templates', '/jobs', '/team', '/admin', '/crew']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   // 1. Protect routes requiring authentication
   if (isProtectedPath) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search)
-      return NextResponse.redirect(url)
-    }
+    if (request.nextUrl.pathname.startsWith('/crew')) {
+      // Crew routes can be accessed with either a standard supabase session or a crew passcode session
+      if (!user && !crewToken) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search)
+        return NextResponse.redirect(url)
+      }
+    } else {
+      // Non-crew protected routes strictly require a standard logged in user
+      if (!user) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search)
+        return NextResponse.redirect(url)
+      }
 
-    // Fast-path redirect for crew members trying to access manager/admin dashboard
-    if (user.user_metadata?.role === 'crew' && !request.nextUrl.pathname.startsWith('/crew')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/crew/jobs'
-      return NextResponse.redirect(url)
+      // Fast-path redirect for crew members trying to access manager/admin dashboard
+      if (user.user_metadata?.role === 'crew') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/crew/jobs'
+        return NextResponse.redirect(url)
+      }
     }
   }
 
   // Redirect authenticated user away from login page to their specific dashboard
   if (request.nextUrl.pathname.startsWith('/login')) {
+    if (crewToken) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/crew/jobs'
+      return NextResponse.redirect(url)
+    }
     if (user) {
       const url = request.nextUrl.clone()
       if (user.user_metadata?.role === 'crew') {
         url.pathname = '/crew/jobs'
       } else {
-        // Defer specific admin/owner routing to the server component
         url.pathname = '/dashboard'
       }
       return NextResponse.redirect(url)

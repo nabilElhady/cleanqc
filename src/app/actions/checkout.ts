@@ -89,87 +89,14 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
   return { url: checkoutData.checkout_url }
 }
 
+/**
+ * @deprecated Use getCustomerPortalUrl() from @/app/actions/billing instead.
+ * Kept for backwards compatibility — delegates to the canonical implementation.
+ */
 export async function createPortalSession(): Promise<{ url: string }> {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !user) {
-    throw new Error('You must be logged in.')
-  }
-
-  const adminDb = createAdminClient()
-  const { data: profile } = await adminDb
-    .from('profiles')
-    .select('org_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.org_id) {
-    throw new Error('Organization context not found.')
-  }
-
-  const { data: org } = await adminDb
-    .from('organizations')
-    .select('creem_subscription_id')
-    .eq('id', profile.org_id)
-    .single()
-
-  if (!org?.creem_subscription_id) {
-    throw new Error('No active Creem subscription found for your organization.')
-  }
-
-  // Handle mock simulation for local/sandbox testing
-  if (org.creem_subscription_id === 'sub_123') {
-    return { url: 'https://creem.io' }
-  }
-
-  const creemApiKey = 'creem_test_4gaNBZdcI18mFCxZSEC8lH'
-  const isTestMode = creemApiKey.startsWith('creem_test_')
-  
-  // 1. Fetch subscription details to retrieve customer_id
-  const subUrl = isTestMode
-    ? `https://test-api.creem.io/v1/subscriptions/${org.creem_subscription_id}`
-    : `https://api.creem.io/v1/subscriptions/${org.creem_subscription_id}`
-
-  const subResponse = await fetch(subUrl, {
-    headers: { 'x-api-key': creemApiKey }
-  })
-
-  if (!subResponse.ok) {
-    throw new Error('Failed to retrieve subscription from Creem.')
-  }
-
-  const subData = await subResponse.json()
-  const customerId = subData.customer_id || subData.customerId || subData.customer?.id
-
-  if (!customerId) {
-    throw new Error('Could not retrieve customer details from subscription.')
-  }
-
-  // 2. Generate the customer portal link
-  const portalUrl = isTestMode
-    ? 'https://test-api.creem.io/v1/customer-portal'
-    : 'https://api.creem.io/v1/customer-portal'
-
-  const portalResponse = await fetch(portalUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': creemApiKey
-    },
-    body: JSON.stringify({ customer_id: customerId })
-  })
-
-  if (!portalResponse.ok) {
-    throw new Error('Failed to generate customer portal session.')
-  }
-
-  const portalData = await portalResponse.json()
-  const url = portalData.customerPortalLink || portalData.url
-
-  if (!url) {
-    throw new Error('Creem API did not return a valid customer portal URL.')
-  }
-
-  return { url }
+  const { getCustomerPortalUrl } = await import('@/app/actions/billing')
+  const result = await getCustomerPortalUrl()
+  if (result.error) throw new Error(result.error)
+  return { url: result.url! }
 }
+

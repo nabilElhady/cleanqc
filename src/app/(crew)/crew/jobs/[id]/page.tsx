@@ -1,11 +1,12 @@
 import * as React from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import ChecklistForm from './ChecklistForm'
 import { Card, CardContent } from '@/components/ui/card'
 import { CheckCircle2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,38 +21,47 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
   // 1. Authenticate user
   const {
     data: { user },
-    error: authError,
   } = await supabase.auth.getUser()
 
-  if (authError || !user) {
+  const cookieStore = await cookies()
+  const crewToken = cookieStore.get('crew_session_token')?.value
+  const activeUserId = user?.id || crewToken
+
+  if (!activeUserId) {
     redirect('/login')
   }
 
-  // 2. Fetch the job details
-  const { data: job, error: jobError } = await supabase
+  // 2. Fetch the job details (using admin client to bypass RLS for passcode users)
+  const db = createAdminClient()
+  const { data: rawJob, error: jobError } = await db
     .from('jobs')
-    .select(`
-      id,
-      title,
-      location,
-      status,
-      org_id,
-      assigned_to,
-      template_id,
-      checklist_templates!template_id (
-        id,
-        name
-      )
-    `)
+    .select('id, title, location, status, org_id, assigned_to, template_id')
     .eq('id', id)
     .single()
 
-  if (jobError || !job) {
+  if (jobError || !rawJob) {
     notFound()
   }
 
+  let checklistTemplate = null
+  if (rawJob.template_id) {
+    const { data: template } = await db
+      .from('checklist_templates')
+      .select('id, name')
+      .eq('id', rawJob.template_id)
+      .single()
+    if (template) {
+      checklistTemplate = template
+    }
+  }
+
+  const job = {
+    ...rawJob,
+    checklist_templates: checklistTemplate
+  }
+
   // 3. Security check: Only assigned crew member can view
-  if (job.assigned_to !== user.id) {
+  if (job.assigned_to !== activeUserId) {
     return (
       <div className="space-y-4 text-center py-12 text-[#FAFAFA]">
         <h2 className="text-xl font-bold text-rose-450">Access Denied</h2>
@@ -61,7 +71,7 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
         <div className="pt-2">
           <Link href="/crew/jobs" passHref>
             <Button variant="outline">
-              Back to Dashboard
+               Back to Dashboard
             </Button>
           </Link>
         </div>
@@ -100,8 +110,8 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
     )
   }
 
-  // 5. Fetch template items ordered by sort_order
-  const { data: items, error: itemsError } = await supabase
+  // 5. Fetch template items ordered by sort_order (using admin client to bypass RLS)
+  const { data: items, error: itemsError } = await db
     .from('template_items')
     .select('id, label, requires_photo, sort_order')
     .eq('template_id', job.template_id)
@@ -111,7 +121,7 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
 
   // 6. Update job status to 'in_progress' if it is currently 'pending'
   if (job.status === 'pending') {
-    await supabase
+    await db
       .from('jobs')
       .update({ status: 'in_progress' })
       .eq('id', job.id)

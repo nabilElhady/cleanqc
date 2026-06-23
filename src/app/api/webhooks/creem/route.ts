@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     const creemSubscriptionId = data.subscription_id || data.subscriptionId || data.id || ''
+    const creemCustomerId = data.customer_id || data.customerId || data.customer?.id || ''
     
     // Convert Unix millisecond timestamp or string date to ISO string safely for Postgres
     const rawCreatedAt = event.created_at || event.createdAt
@@ -125,7 +126,8 @@ export async function POST(request: NextRequest) {
       p_subscription_status: statusToSet,
       p_subscription_tier: tier,
       p_creem_subscription_id: creemSubscriptionId,
-      p_event_created_at: eventCreatedAt
+      p_event_created_at: eventCreatedAt,
+      p_creem_customer_id: creemCustomerId || null
     })
 
     if (rpcError) {

@@ -42,18 +42,17 @@ export default async function TeamDashboardPage() {
     )
   }
 
-  // 3. Fetch all crew member profiles in organization
-  const { data: crewProfiles, error: crewErr } = await db
+  // 3. Fetch all team profiles in organization
+  const { data: teamProfiles, error: teamErr } = await db
     .from('profiles')
-    .select('id, full_name, role')
+    .select('id, full_name, role, crew_passcode')
     .eq('org_id', profile.org_id)
-    .eq('role', 'crew')
     .order('created_at', { ascending: false })
 
-  if (crewErr || !crewProfiles) {
+  if (teamErr || !teamProfiles) {
     return (
       <div className="text-[#09090B] text-center p-8 font-mono text-xs uppercase">
-        Failed to load crew profiles. Please refresh the page.
+        Failed to load team profiles. Please refresh the page.
       </div>
     )
   }
@@ -76,15 +75,16 @@ export default async function TeamDashboardPage() {
       })
     }
   } catch (err) {
-    console.error('Failed to securely fetch crew emails and status:', err)
+    console.error('Failed to securely fetch team emails and status:', err)
   }
 
   // 5. Map DB profiles and Auth metadata together
-  const initialCrew = crewProfiles.map((member) => ({
+  const initialCrew = teamProfiles.map((member) => ({
     id: member.id,
-    fullName: member.full_name || 'Invited Crew Member',
-    email: emailMap[member.id] || 'N/A',
-    status: statusMap[member.id] || 'PENDING',
+    fullName: member.full_name || (member.role === 'owner' ? 'Org Owner' : 'Invited Member'),
+    email: member.crew_passcode ? `CODE: ${member.crew_passcode}` : (emailMap[member.id] || 'N/A'),
+    status: member.crew_passcode ? 'ACTIVE' : (statusMap[member.id] || 'PENDING'),
+    role: member.role,
   }))
 
   return (
@@ -104,7 +104,7 @@ export default async function TeamDashboardPage() {
         </div>
       </div>
 
-      <TeamClient initialCrew={initialCrew} />
+      <TeamClient initialCrew={initialCrew} companyId={profile.org_id} />
     </div>
   )
 }
