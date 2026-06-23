@@ -7,6 +7,7 @@ import { ActionResponse } from './templates'
 import { assertPremiumServer } from '@/lib/subscription'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
+import { sendTransactionalEmail } from '@/lib/email/resend'
 
 // ==========================================
 // ZOD VALIDATION SCHEMAS
@@ -216,6 +217,15 @@ export async function inviteManager(
       return { success: false, error: createUserError?.message || 'Failed to create authenticated user.' }
     }
 
+    // Fetch organization name for a premium, personalized email welcome
+    const { data: orgData } = await supabaseAdmin
+      .from('organizations')
+      .select('name')
+      .eq('id', managerProfile.org_id)
+      .single()
+
+    const orgName = orgData?.name || 'their team'
+
     const { error: insertError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -228,6 +238,55 @@ export async function inviteManager(
     if (insertError) {
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
       return { success: false, error: insertError.message }
+    }
+
+    // Send transactional invitation email with direct login details
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://getcrewmark.com'
+      const loginLink = `${siteUrl}/login`
+      
+      await sendTransactionalEmail({
+        to: parsedEmail,
+        subject: `Invitation: Manage ${orgName} on Crewmark`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #0f172a;">
+            <div style="margin-bottom: 28px;">
+              <span style="font-size: 20px; font-weight: 900; letter-spacing: -0.05em; color: #0f172a;">Crewmark</span>
+            </div>
+            
+            <h2 style="color: #0f172a; margin-top: 0; margin-bottom: 12px; font-size: 20px; font-weight: 700; tracking: -0.02em;">
+              You have been invited to manage ${orgName}
+            </h2>
+            
+            <p style="color: #475569; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+              Hello ${parsedName},<br />
+              The owner of <strong>${orgName}</strong> has invited you to join their team as a <strong>Manager</strong> on Crewmark. You'll be able to dispatch jobs, manage checklists, and coordinate crew members.
+            </p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 20px; margin-bottom: 28px;">
+              <h3 style="color: #334155; margin-top: 0; margin-bottom: 12px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Your Login Credentials</h3>
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #475569;"><strong>Email:</strong> ${parsedEmail}</p>
+              <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Temporary Password:</strong> <code style="background-color: #e2e8f0; padding: 3px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #0f172a;">${tempPassword}</code></p>
+            </div>
+            
+            <p style="color: #475569; font-size: 14px; line-height: 20px; margin-bottom: 28px;">
+              For security, please log in using the button below and update your password in your settings tab right away.
+            </p>
+            
+            <a href="${loginLink}" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; font-weight: 700; border-radius: 6px; font-size: 14px; text-align: center; transition: background-color 0.2s;">
+              Accept Invitation & Sign In
+            </a>
+            
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 36px 0;" />
+            
+            <p style="color: #94a3b8; font-size: 12px; line-height: 18px; margin: 0;">
+              This invitation was sent to ${parsedEmail} on behalf of ${orgName}. If you were not expecting this request, you can safely ignore this message.
+            </p>
+          </div>
+        `
+      })
+    } catch (emailErr) {
+      console.error('[inviteManager] Welcome email dispatch failed:', emailErr)
     }
 
     revalidatePath('/team')
