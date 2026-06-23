@@ -283,7 +283,7 @@ export default function Home() {
 
           <CrispCard className="p-10 !shadow-none border border-border">
             <p className="text-xl leading-relaxed font-medium">
-              "Data integrity is our top priority. By leveraging PostgreSQL Row-Level Security, we ensure that every piece of operational data—from GPS logs to signed photos—is strictly isolated to your organization."
+              Data integrity is our top priority. By leveraging PostgreSQL Row-Level Security, we ensure that every piece of operational data from GPS logs to signed photos is strictly isolated to your organization.
             </p>
             <div className="flex items-center gap-4 pt-6 border-t border-border mt-8">
               <div className="h-12 w-12 bg-foreground flex items-center justify-center text-background">
