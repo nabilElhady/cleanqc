@@ -44,7 +44,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-xl font-semibold mb-2">5. Contact Information</h2>
           <p>
-            If you have any questions about these Terms, please contact us at <strong>nabil@nabil-systems.xyz</strong>.
+            If you have any questions about these Terms, please contact us at <strong>support@getcrewmark.com</strong>.
           </p>
         </section>
       </div>

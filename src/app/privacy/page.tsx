@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-xl font-semibold mb-2">5. Contact Us</h2>
           <p>
-            For any privacy-related inquiries or data deletion requests, please contact: <strong>nabil@nabil-systems.xyz</strong>.
+            For any privacy-related inquiries or data deletion requests, please contact: <strong>support@getcrewmark.com</strong>.
           </p>
         </section>
       </div>

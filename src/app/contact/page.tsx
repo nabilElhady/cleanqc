@@ -11,7 +11,7 @@ export default function ContactPage() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText('nabil@nabil-systems.xyz')
+      await navigator.clipboard.writeText('support@getcrewmark.com')
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -125,7 +125,7 @@ export default function ContactPage() {
             {copied ? (
               <span className="flex items-center gap-2 text-green-600"><Check className="h-4 w-4" /> Copied</span>
             ) : (
-              <span className="flex items-center gap-2 text-gray-700"><Copy className="h-4 w-4" /> nabil@nabil-systems.xyz</span>
+              <span className="flex items-center gap-2 text-gray-700"><Copy className="h-4 w-4" /> support@getcrewmark.com</span>
             )}
           </button>
         </div>

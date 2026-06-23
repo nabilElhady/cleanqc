@@ -59,8 +59,8 @@ export async function submitSupportMessage(
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        from: "contact@nabil-systems.xyz",
-        to: "nabil@nabil-systems.xyz",
+        from: "support@getcrewmark.com",
+        to: "support@getcrewmark.com",
         subject: "New Contact Form Submission",
         html: `<p><strong>From:</strong> ${validatedFields.data.name}</p>
                <p><strong>Email:</strong> ${validatedFields.data.email}</p>

@@ -29,7 +29,7 @@ export default function RefundPolicyPage() {
         <section>
           <h2 className="text-xl font-semibold mb-2">Questions</h2>
           <p>
-            If you have an issue with your account or billing, please reach out to us at <strong>nabil@nabil-systems.xyz</strong> before initiating any chargebacks.
+            If you have an issue with your account or billing, please reach out to us at <strong>support@getcrewmark.com</strong> before initiating any chargebacks.
           </p>
         </section>
       </div>
