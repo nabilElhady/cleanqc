@@ -343,3 +343,127 @@ export async function authenticateCrewMember(passcode: string) {
   
   redirect('/crew/jobs')
 }
+
+/**
+ * Initiates Google OAuth sign-in via Supabase.
+ * Returns the provider URL for the client to redirect to.
+ * Using a redirect() inside a Server Action in a try/catch causes issues,
+ * so we return the URL and let the client handle the redirect.
+ */
+export async function signInWithGoogle(next?: string): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient()
+
+  // Build the absolute callback URL dynamically for both local and production
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://getcrewmark.com')
+
+  const callbackUrl = new URL('/auth/callback', siteUrl)
+  if (next) {
+    callbackUrl.searchParams.set('next', next)
+  }
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: callbackUrl.toString(),
+      queryParams: {
+        // Force account selection prompt on every sign-in (prevents auto-selection surprises)
+        prompt: 'select_account',
+      },
+    },
+  })
+
+  if (error || !data.url) {
+    console.error('[signInWithGoogle] OAuth initiation failed:', error?.message)
+    return { error: error?.message || 'Failed to initiate Google sign-in.' }
+  }
+
+  return { url: data.url }
+}
+
+/**
+ * Completes the onboarding process for new users who signed up via Google OAuth.
+ * Creates an organization and assigns the user as the owner.
+ */
+export async function completeGoogleOnboarding(
+  prevState: FormState | FormData,
+  formData?: FormData
+): Promise<FormState> {
+  let actualFormData: FormData | undefined
+
+  if (prevState instanceof FormData) {
+    actualFormData = prevState
+  } else if (formData instanceof FormData) {
+    actualFormData = formData
+  }
+
+  if (!actualFormData) {
+    return { error: 'Invalid form submission.' }
+  }
+
+  const orgName = actualFormData.get('orgName')?.toString().trim()
+  if (!orgName) {
+    return { error: 'Organization name is required.' }
+  }
+
+  const supabase = await createClient()
+  const { data: authData, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !authData.user) {
+    return { error: 'Not authenticated.' }
+  }
+
+  const userId = authData.user.id
+  const adminDb = createAdminClient()
+
+  // Verify the user doesn't already have an org
+  const { data: profile } = await adminDb
+    .from('profiles')
+    .select('org_id')
+    .eq('id', userId)
+    .single()
+
+  if (profile?.org_id) {
+    redirect('/dashboard')
+  }
+
+  const baseSlug = orgName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+  const slug = `${baseSlug || 'org'}-${Math.random().toString(36).substring(2, 8)}`
+
+  // Create the Organization
+  const { data: orgData, error: orgError } = await adminDb
+    .from('organizations')
+    .insert({ 
+      name: orgName,
+      slug
+    })
+    .select('id')
+    .single()
+
+  if (orgError || !orgData) {
+    return { error: orgError?.message || 'Failed to create organization.' }
+  }
+
+  const orgId = orgData.id
+
+  // Update Profile
+  const { error: upsertError } = await adminDb
+    .from('profiles')
+    .update({
+      org_id: orgId,
+      role: 'owner',
+    })
+    .eq('id', userId)
+
+  if (upsertError) {
+    // Rollback org
+    await adminDb.from('organizations').delete().eq('id', orgId)
+    return { error: upsertError.message }
+  }
+
+  redirect('/dashboard')
+}

@@ -5,6 +5,7 @@ import { signInWithPassword, authenticateCrewMember } from '@/app/actions/auth'
 import { Mail, Lock, Loader2, Sparkles, AlertCircle, KeyRound } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { GoogleSignInButton } from '@/components/ui/google-sign-in-button'
 
 const inputClass = "block w-full pl-10 pr-4 py-3 bg-[#FFFFFF] border border-[#E4E4E7] text-[#09090B] placeholder-[#71717A] focus:outline-none focus:border-[#09090B] transition-colors text-sm disabled:opacity-50"
 
@@ -134,6 +135,15 @@ function LoginForm() {
           >
             {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign In'}
           </button>
+
+          {/* Divider */}
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 border-t border-[#E4E4E7]" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">or</span>
+            <div className="flex-1 border-t border-[#E4E4E7]" />
+          </div>
+
+          <GoogleSignInButton next={redirectParam || undefined} />
         </form>
       ) : (
         <form onSubmit={handleCrewSubmit} className="space-y-6">
