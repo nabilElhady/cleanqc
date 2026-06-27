@@ -450,14 +450,15 @@ export async function completeGoogleOnboarding(
 
   const orgId = orgData.id
 
-  // Update Profile
+  // Upsert Profile (might not exist yet for Google OAuth users)
   const { error: upsertError } = await adminDb
     .from('profiles')
-    .update({
+    .upsert({
+      id: userId,
       org_id: orgId,
       role: 'owner',
-    })
-    .eq('id', userId)
+      full_name: authData.user.user_metadata?.full_name || authData.user.user_metadata?.name || 'Unknown',
+    }, { onConflict: 'id' })
 
   if (upsertError) {
     // Rollback org
