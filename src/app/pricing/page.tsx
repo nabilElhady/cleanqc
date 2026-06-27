@@ -59,7 +59,7 @@ export default async function PricingPage() {
       <main className="min-h-screen bg-[#FAFAFA] py-20 px-4 md:px-8 flex flex-col items-center justify-center font-sans text-[#09090B]">
         {/* Navigation / Header */}
         <div className="absolute top-8 left-8">
-          <a href="/" className="font-mono text-sm tracking-wider uppercase font-bold hover:underline">
+          <a href={user ? "/dashboard" : "/"} className="font-mono text-sm tracking-wider uppercase font-bold hover:underline">
             ← Crewmark
           </a>
         </div>
