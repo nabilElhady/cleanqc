@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, MapPin, ChevronRight, ClipboardList } from 'lucide-react'
 import { cookies } from 'next/headers'
+import { StatusPill } from '@/components/ui/status-pill'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ interface JobWithTemplate {
   location: string
   scheduled_at: string
   status: 'pending' | 'in_progress' | 'completed'
-  checklist_templates: {
+  templates: {
     name: string
   } | null
 }
@@ -50,16 +51,13 @@ export default async function CrewJobsPage() {
     let templatesMap: Record<string, string> = {}
     
     if (templateIds.length > 0) {
-      const { data: templates } = await db
-        .from('checklist_templates')
-        .select('id, name')
-        .in('id', templateIds)
+      // Fetch from templates table
+      const { data: sysRes } = await db.from('templates').select('id, name').in('id', templateIds)
       
-      if (templates) {
-        templates.forEach(t => {
-          templatesMap[t.id] = t.name
-        })
-      }
+      const allTemplates = sysRes || []
+      allTemplates.forEach(t => {
+        templatesMap[t.id] = t.name
+      })
     }
 
     jobs = rawJobs.map(j => ({
@@ -68,7 +66,7 @@ export default async function CrewJobsPage() {
       location: j.location,
       scheduled_at: j.scheduled_at,
       status: j.status,
-      checklist_templates: j.template_id ? { name: templatesMap[j.template_id] || '' } : null
+      templates: j.template_id ? { name: templatesMap[j.template_id] || '' } : null
     }))
   }
 
@@ -99,7 +97,7 @@ export default async function CrewJobsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-[#FFFFFF] border-y border-[#E4E4E7] sm:border sm:rounded-none sm:mx-6 overflow-hidden">
+        <div className="bg-[#FFFFFF] border-y border-[#E4E4E7] sm:border sm:rounded-xl sm:mx-6 overflow-hidden shadow-md">
           {jobs.map((job, index) => {
             const date = new Date(job.scheduled_at)
             const formattedDate = date.toLocaleDateString('en-US', {
@@ -116,27 +114,17 @@ export default async function CrewJobsPage() {
             return (
               <Link href={`/crew/jobs/${job.id}`} key={job.id} className="block group active:scale-[0.98] transition-transform duration-75">
                 <div className={`flex items-center p-4 bg-[#FFFFFF] hover:bg-[#FAFAFA] transition-colors ${!isLast ? 'border-b border-[#E4E4E7]' : ''}`}>
-                  
-                  {/* Status Indicator Circle */}
-                  <div className="flex-shrink-0 mr-4 flex flex-col items-center justify-center h-full">
-                    {job.status === 'in_progress' ? (
-                      <div className="h-6 w-6 rounded-full bg-[#16A34A] border border-[#16A34A] flex items-center justify-center shadow-sm">
-                        <div className="h-2 w-2 rounded-full bg-white" />
-                      </div>
-                    ) : (
-                      <div className="h-6 w-6 rounded-full border border-[#E4E4E7] group-hover:border-[#71717A] transition-colors bg-[#FAFAFA]" />
-                    )}
-                  </div>
-
                   <div className="flex-1 min-w-0 py-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-3 mb-2">
                       <h2 className="font-semibold text-[#09090B] text-base truncate">
                         {job.title}
                       </h2>
-                      {job.status === 'in_progress' && (
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-[#16A34A]">
-                          Active
-                        </span>
+                      {job.status === 'in_progress' ? (
+                        <StatusPill variant="in_progress">In Progress</StatusPill>
+                      ) : job.status === 'completed' ? (
+                        <StatusPill variant="completed">Completed</StatusPill>
+                      ) : (
+                        <StatusPill variant="pending">Pending</StatusPill>
                       )}
                     </div>
 

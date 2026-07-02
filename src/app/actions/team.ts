@@ -26,28 +26,28 @@ const DeleteCrewSchema = z.object({
 /**
  * Helper to check seat limits for a given organization and role.
  */
-async function checkSeatLimits(orgId: string, roleToAdd: 'crew' | 'manager', supabaseAdmin: any): Promise<{ allowed: boolean; error?: string }> {
-  // 1. Get organization tier
-  const { data: org } = await supabaseAdmin
-    .from('organizations')
-    .select('subscription_tier')
-    .eq('id', orgId)
-    .single()
+async function checkSeatLimits(orgId: string, roleToAdd: 'crew' | 'manager', tier: string, supabaseAdmin: any): Promise<{ allowed: boolean; error?: string }> {
 
-  const tier = org?.subscription_tier || 'starter' // default to starter
+  // 2. Count existing users by role efficiently without downloading rows
+  const [crewRes, managerRes] = await Promise.all([
+    supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .eq('role', 'crew'),
+    supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .in('role', ['manager', 'owner'])
+  ])
 
-  // 2. Count existing users by role
-  const { data: profiles, error } = await supabaseAdmin
-    .from('profiles')
-    .select('role')
-    .eq('org_id', orgId)
-
-  if (error || !profiles) {
+  if (crewRes.error || managerRes.error) {
     return { allowed: false, error: 'Could not fetch current organization usage.' }
   }
 
-  const crewCount = profiles.filter((p: any) => p.role === 'crew').length
-  const managerCount = profiles.filter((p: any) => p.role === 'manager' || p.role === 'owner').length
+  const crewCount = crewRes.count || 0
+  const managerCount = managerRes.count || 0
 
   // 3. Apply Limits
   if (tier === 'starter') {
@@ -97,7 +97,7 @@ export async function inviteCrewMember(
     const supabaseAdmin = createAdminClient()
     const { data: managerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, organizations!inner(name, subscription_tier)')
       .eq('id', currentUser.id)
       .single()
 
@@ -109,8 +109,11 @@ export async function inviteCrewMember(
       return { success: false, error: 'Only managers can invite crew members.' }
     }
 
+    const org = Array.isArray(managerProfile.organizations) ? managerProfile.organizations[0] : managerProfile.organizations;
+    const tier = org?.subscription_tier || 'starter';
+
     // Check Seat Limits before proceeding
-    const limitCheck = await checkSeatLimits(managerProfile.org_id, 'crew', supabaseAdmin)
+    const limitCheck = await checkSeatLimits(managerProfile.org_id, 'crew', tier, supabaseAdmin)
     if (!limitCheck.allowed) {
       return { success: false, error: limitCheck.error, requiresUpgrade: true }
     }
@@ -188,7 +191,7 @@ export async function inviteManager(
     const supabaseAdmin = createAdminClient()
     const { data: managerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, organizations!inner(name, subscription_tier)')
       .eq('id', currentUser.id)
       .single()
 
@@ -198,8 +201,12 @@ export async function inviteManager(
       return { success: false, error: 'Only owners can invite other managers.' }
     }
 
+    const org = Array.isArray(managerProfile.organizations) ? managerProfile.organizations[0] : managerProfile.organizations;
+    const tier = org?.subscription_tier || 'starter';
+    const orgName = org?.name || 'their team';
+
     // Check Seat Limits before proceeding
-    const limitCheck = await checkSeatLimits(managerProfile.org_id, 'manager', supabaseAdmin)
+    const limitCheck = await checkSeatLimits(managerProfile.org_id, 'manager', tier, supabaseAdmin)
     if (!limitCheck.allowed) {
       return { success: false, error: limitCheck.error, requiresUpgrade: true }
     }
@@ -218,13 +225,6 @@ export async function inviteManager(
     }
 
     // Fetch organization name for a premium, personalized email welcome
-    const { data: orgData } = await supabaseAdmin
-      .from('organizations')
-      .select('name')
-      .eq('id', managerProfile.org_id)
-      .single()
-
-    const orgName = orgData?.name || 'their team'
 
     const { error: insertError } = await supabaseAdmin
       .from('profiles')
@@ -422,42 +422,45 @@ async function generateUniqueCrewCode(supabaseAdmin: any): Promise<string> {
     'Q': ['9'], '9': ['Q'],
     'C': ['6']
   }
-  let isUnique = false
-  let code = ''
   
-  while (!isUnique) {
-    const length = Math.floor(Math.random() * (10 - 6 + 1)) + 6
-    code = ''
-    for (let i = 0; i < length; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    
-    // Validate adjacent lookalikes
-    let hasLookalikeAdjacent = false
-    for (let i = 0; i < code.length - 1; i++) {
-      const char = code[i]
-      const nextChar = code[i + 1]
-      if (lookalikes[char] && lookalikes[char].includes(nextChar)) {
-        hasLookalikeAdjacent = true
-        break
+  while (true) {
+    const candidates: string[] = []
+    while (candidates.length < 10) {
+      const length = Math.floor(Math.random() * (10 - 6 + 1)) + 6
+      let code = ''
+      for (let i = 0; i < length; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length))
       }
-    }
-    
-    if (hasLookalikeAdjacent) {
-      continue
+      
+      let hasLookalikeAdjacent = false
+      for (let i = 0; i < code.length - 1; i++) {
+        const char = code[i]
+        const nextChar = code[i + 1]
+        if (lookalikes[char] && lookalikes[char].includes(nextChar)) {
+          hasLookalikeAdjacent = true
+          break
+        }
+      }
+      
+      if (!hasLookalikeAdjacent) {
+        candidates.push(code)
+      }
     }
     
     // Ensure this code isn't actively assigned to someone else
     const { data } = await supabaseAdmin
       .from('profiles')
-      .select('id')
-      .eq('crew_passcode', code)
-      .maybeSingle()
+      .select('crew_passcode')
+      .in('crew_passcode', candidates)
       
-    if (!data) isUnique = true
+    const usedCodes = new Set(data?.map((row: any) => row.crew_passcode) || [])
+    
+    for (const code of candidates) {
+      if (!usedCodes.has(code)) {
+        return code
+      }
+    }
   }
-  
-  return code
 }
 
 /**
@@ -476,7 +479,7 @@ export async function registerCrewMember(name: string, companyId: string, passco
     // Verify caller is owner or manager
     const { data: callerProfile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, organizations!inner(subscription_tier)')
       .eq('id', currentUser.id)
       .single()
 
@@ -484,8 +487,11 @@ export async function registerCrewMember(name: string, companyId: string, passco
       return { success: false, error: 'Only owners or managers can add crew members.' }
     }
 
+    const org = Array.isArray(callerProfile.organizations) ? callerProfile.organizations[0] : callerProfile.organizations;
+    const tier = org?.subscription_tier || 'starter';
+
     // Check seat limits
-    const limitCheck = await checkSeatLimits(companyId, 'crew', supabaseAdmin)
+    const limitCheck = await checkSeatLimits(companyId, 'crew', tier, supabaseAdmin)
     if (!limitCheck.allowed) {
       return { success: false, error: limitCheck.error, requiresUpgrade: true }
     }

@@ -18,7 +18,7 @@ export type InvitationActionResponse = {
 
 /**
  * Creates a pending invitation in the DB and dispatches a welcome email.
- * Note: Database column is company_id, mapping to the owner's org_id.
+ * Note: Database column is organization_id, mapping to the owner's org_id.
  */
 export async function createAndSendInvite(
   email: string,
@@ -59,12 +59,12 @@ export async function createAndSendInvite(
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7)
 
-    // 4. Save to the invitations table (using company_id mapping)
+    // 4. Save to the invitations table (using organization_id mapping)
     const { error: insertErr } = await adminDb
       .from('invitations')
       .insert({
         email: email.trim().toLowerCase(),
-        company_id: profile.org_id,
+        organization_id: profile.org_id,
         role,
         token,
         expires_at: expiresAt.toISOString(),
@@ -141,7 +141,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationAct
     const adminDb = createAdminClient()
     const { data: invitation, error } = await adminDb
       .from('invitations')
-      .select('email, role, company_id, expires_at, organizations(name)')
+      .select('email, role, organization_id, expires_at, organizations(name)')
       .eq('token', token)
       .single()
 

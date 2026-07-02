@@ -287,7 +287,7 @@ export function TeamListClient({ profiles, emailMap, currentUserId, currentUserR
                           </div>
                           <div className="flex items-center gap-3">
                             <Phone className="h-4 w-4 shrink-0" />
-                            <span>{profile.phone || '—'}</span>
+                            <span>{profile.phone || 'N/A'}</span>
                           </div>
                         </div>
 

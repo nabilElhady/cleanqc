@@ -71,23 +71,17 @@ export async function getCustomerPortalUrl(): Promise<{ url?: string; error?: st
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { error: 'Session expired. Please sign in again.' }
 
-  // 2. Get org_id via admin client (bypasses RLS)
+  // 2. Get profile and org via admin client (bypasses RLS)
   const adminDb = createAdminClient()
   const { data: profile } = await adminDb
     .from('profiles')
-    .select('org_id')
+    .select('org_id, organizations!inner(creem_customer_id, creem_subscription_id)')
     .eq('id', user.id)
     .single()
 
   if (!profile?.org_id) return { error: 'Organization not found.' }
 
-  // 3. Load billing fields from organizations table
-  const { data: org } = await adminDb
-    .from('organizations')
-    .select('creem_customer_id, creem_subscription_id')
-    .eq('id', profile.org_id)
-    .single()
-
+  const org = Array.isArray(profile.organizations) ? profile.organizations[0] : profile.organizations;
   if (!org) return { error: 'Billing record not found.' }
 
   try {
@@ -104,7 +98,7 @@ export async function getCustomerPortalUrl(): Promise<{ url?: string; error?: st
       if (portalUrl) return { url: portalUrl }
 
       return {
-        error: 'Creem returned an empty portal response. Your plan may be inactive — please contact support.',
+        error: 'Creem returned an empty portal response. Your plan may be inactive. Please contact support.',
       }
     }
 

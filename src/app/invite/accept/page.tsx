@@ -57,7 +57,7 @@ export default async function InviteAcceptPage({ searchParams }: PageProps) {
     // 1. Fetch invitation record again to ensure validity
     const { data: invRecord, error: invErr } = await adminDb
       .from('invitations')
-      .select('email, role, company_id')
+      .select('email, role, organization_id')
       .eq('token', token)
       .single()
 
@@ -82,7 +82,7 @@ export default async function InviteAcceptPage({ searchParams }: PageProps) {
       .from('profiles')
       .insert({
         id: authUser.user.id,
-        org_id: invRecord.company_id, // maps company_id to profiles.org_id
+        org_id: invRecord.organization_id, // maps organization_id to profiles.org_id
         role: invRecord.role,
         full_name: name,
       })

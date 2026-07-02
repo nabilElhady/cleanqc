@@ -32,7 +32,9 @@ const cspHeader = `
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@react-pdf/renderer'],
-  turbopack: {},
+  turbopack: {
+      root: __dirname,
+  },
   async headers() {
     return [
       {
@@ -56,7 +58,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
+            value: 'camera=(self), microphone=(), geolocation=(self), browsing-topics=()',
           },
         ],
       },

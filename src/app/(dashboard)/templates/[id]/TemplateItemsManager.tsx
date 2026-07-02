@@ -31,12 +31,12 @@ interface TemplateItem {
   label: string
   requires_photo: boolean
   sort_order: number
-  created_at: string
 }
 
 interface TemplateItemsManagerProps {
   templateId: string
   initialItems: TemplateItem[]
+  isSystemTemplate?: boolean
 }
 
 // Sortable item wrapper
@@ -90,8 +90,9 @@ function SortableItem({ id, label, requiresPhoto }: SortableItemProps) {
   )
 }
 
-export function TemplateItemsManager({ templateId, initialItems }: TemplateItemsManagerProps) {
-  const { isReadOnly, openUpgradeModal } = useSubscription()
+export function TemplateItemsManager({ templateId, initialItems, isSystemTemplate = false }: TemplateItemsManagerProps) {
+  const { isReadOnly: subscriptionReadOnly, openUpgradeModal } = useSubscription()
+  const isReadOnly = subscriptionReadOnly || isSystemTemplate
   const [items, setItems] = React.useState<TemplateItem[]>(initialItems)
   const [optimisticItems, reorderOptimistically] = React.useOptimistic(
     items,

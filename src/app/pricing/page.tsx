@@ -22,24 +22,21 @@ export default async function PricingPage() {
     const db = createAdminClient()
     const { data: profile } = await db
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id, role, organizations!org_id(subscription_status)')
       .eq('id', user.id)
       .single()
 
     if (profile) {
       userRole = profile.role
       orgId = profile.org_id
+      
+      // Handle Supabase embedded select format (array vs object)
+      const orgData = Array.isArray(profile.organizations) 
+        ? profile.organizations[0] 
+        : profile.organizations;
 
-      if (profile.org_id) {
-        const { data: org } = await db
-          .from('organizations')
-          .select('subscription_status')
-          .eq('id', profile.org_id)
-          .single()
-
-        if (org) {
-          subscriptionStatus = org.subscription_status
-        }
+      if (orgData) {
+        subscriptionStatus = orgData.subscription_status
       }
     }
   }

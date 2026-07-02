@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
       <div className="border border-[#E4E4E7] overflow-x-auto bg-white">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-[#E4E4E7] bg-[#F4F4F5]">
+            <tr className="border-b-2 border-[#E4E4E7] bg-[#FAFAFA] text-left">
               <th className="p-4 font-mono text-xs font-bold uppercase tracking-widest text-[#09090B]">Email / ID</th>
               <th className="p-4 font-mono text-xs font-bold uppercase tracking-widest text-[#09090B]">Role</th>
               <th className="p-4 font-mono text-xs font-bold uppercase tracking-widest text-[#09090B]">Superadmin</th>

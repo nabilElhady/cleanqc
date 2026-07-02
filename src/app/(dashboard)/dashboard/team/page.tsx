@@ -30,12 +30,11 @@ export default async function TeamDashboardPage() {
     redirect('/login')
   }
 
-  // Owner verification
   if (profile.role !== 'owner') {
     return (
-      <div className="text-[#09090B] text-center p-8 bg-[#FAFAFA] border border-black max-w-lg mx-auto mt-12 border-t-2 border-l-2 border-b-4 border-r-4">
-        <h3 className="text-lg font-black font-mono uppercase">ACCESS DENIED</h3>
-        <p className="text-zinc-500 font-mono text-xs mt-2 uppercase tracking-wide">
+      <div className="text-[#09090B] text-center p-8 bg-[#FAFAFA] border border-[#E4E4E7] max-w-lg mx-auto mt-12 rounded-xl shadow-sm">
+        <h3 className="text-lg font-bold uppercase">ACCESS DENIED</h3>
+        <p className="text-[#71717A] text-sm mt-2">
           Only organization owners have access to this page.
         </p>
       </div>
@@ -51,7 +50,7 @@ export default async function TeamDashboardPage() {
 
   if (teamErr || !teamProfiles) {
     return (
-      <div className="text-[#09090B] text-center p-8 font-mono text-xs uppercase">
+      <div className="text-[#09090B] text-center p-8 text-sm">
         Failed to load team profiles. Please refresh the page.
       </div>
     )
@@ -92,13 +91,13 @@ export default async function TeamDashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-[#E4E4E7]">
         <div>
-          <span className="text-[10px] font-mono font-black uppercase tracking-widest text-zinc-500">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">
             Organization
           </span>
-          <h1 className="text-3xl font-black tracking-tight mt-1 uppercase font-mono text-black">
+          <h1 className="font-serif text-4xl font-bold tracking-tight text-[#09090B]">
             My Team
           </h1>
-          <p className="text-zinc-500 mt-1 font-mono text-xs uppercase tracking-wide">
+          <p className="text-[#71717A] mt-1 text-sm">
             Add cleaners so you can assign jobs to them.
           </p>
         </div>

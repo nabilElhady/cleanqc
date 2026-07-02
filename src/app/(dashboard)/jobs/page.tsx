@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { assertPremiumServer } from '@/lib/subscription'
-import { CreateJobForm } from './CreateJobForm'
 import { JobsListClient } from './JobsListClient'
 
 export const dynamic = 'force-dynamic'
@@ -40,39 +39,52 @@ export default async function JobsPage() {
     )
   }
 
-  // 1. Fetch organization jobs with template and crew names joined
-  const { data: jobs, error: jobsErr } = await db
-    .from('jobs')
-    .select(`
-      id, title, location, status, scheduled_at, completed_at, template_id, assigned_to, org_id,
-      checklist_templates!template_id (id, name),
-      profiles!assigned_to (id, full_name)
-    `)
-    .eq('org_id', profile.org_id)
-    .order('scheduled_at', { ascending: true })
+  // 1. Parallelize fetching organization jobs, templates, and crew members
+  const [jobsRes, templatesRes, crewRes] = await Promise.all([
+    db
+      .from('jobs')
+      .select(`
+        id, title, location, status, scheduled_at, completed_at, template_id, assigned_to, org_id,
+        profiles!assigned_to (id, full_name)
+      `)
+      .eq('org_id', profile.org_id)
+      .order('scheduled_at', { ascending: true }),
+      
+    db
+      .from('templates')
+      .select('id, name')
+      .or(`organization_id.eq.${profile.org_id},is_system.eq.true`)
+      .not('name', 'ilike', 'Ad-hoc:%')
+      .order('name', { ascending: true }),
+      
+    db
+      .from('profiles')
+      .select('id, full_name')
+      .eq('org_id', profile.org_id)
+      .eq('role', 'crew')
+      .order('full_name', { ascending: true })
+  ])
 
-  // 2. Fetch templates for dropdown menu selection
-  const { data: templates } = await db
-    .from('checklist_templates')
-    .select('id, name')
-    .eq('org_id', profile.org_id)
-    .not('name', 'ilike', 'Ad-hoc:%')
-    .order('name', { ascending: true })
+  const { data: jobs, error: jobsErr } = jobsRes
+  const { data: orgTemplates } = templatesRes
+  const { data: crew } = crewRes
 
-  // 3. Fetch crew members for dropdown assignment selection
-  const { data: crew } = await db
-    .from('profiles')
-    .select('id, full_name')
-    .eq('org_id', profile.org_id)
-    .eq('role', 'crew')
-    .order('full_name', { ascending: true })
+  const templatesList = orgTemplates || []
 
   if (jobsErr) {
     console.error('Error fetching jobs:', jobsErr.message)
   }
 
-  const jobsList = (jobs || []) as any[]
-  const templatesList = templates || []
+  const rawJobs = jobs || []
+  const jobsList = rawJobs.map((job: any) => {
+    const matchedTemplate = templatesList.find(t => t.id === job.template_id)
+    return {
+      ...job,
+      templates: matchedTemplate ? { id: matchedTemplate.id, name: matchedTemplate.name } : null,
+      profiles: Array.isArray(job.profiles) ? job.profiles[0] : job.profiles,
+    }
+  })
+
   const crewList = crew || []
 
   return (
@@ -81,13 +93,12 @@ export default async function JobsPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 pb-6 border-b border-[#E4E4E7]">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A] block mb-2">Operations</span>
-          <h1 className="text-3xl font-black tracking-tight text-[#09090B] leading-none">
+          <h1 className="font-serif text-4xl font-bold tracking-tight text-[#09090B]">
             Job History
           </h1>
-          <p className="text-[#71717A] text-sm mt-2">All jobs sent to your crew — click any completed job to view the photo report.</p>
+          <p className="text-[#71717A] text-sm mt-2">All jobs sent to your crew. Click any completed job to view the photo report.</p>
         </div>
         <div>
-          <CreateJobForm templates={templatesList} crew={crewList} />
         </div>
       </div>
 

@@ -133,7 +133,7 @@ interface PDFReportProps {
     title: string
     location: string
     completed_at: string
-    checklist_templates: {
+    templates: {
       name: string
     } | null
   }

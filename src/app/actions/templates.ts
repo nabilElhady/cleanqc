@@ -2,7 +2,6 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { assertPremiumServer } from '@/lib/subscription'
 import { z } from 'zod'
 
 export type ActionResponse<T = any> = {
@@ -79,7 +78,7 @@ const UpdateItemOrderSchema = z.object({
 /**
  * Helper to fetch the current authenticated user's organization ID.
  */
-async function getOrganizationId(supabase: any): Promise<string> {
+async function getOrganizationAndTier(supabase: any): Promise<{ orgId: string; tier: string }> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -88,7 +87,7 @@ async function getOrganizationId(supabase: any): Promise<string> {
   const db = createAdminClient()
   const { data: profile, error } = await db
     .from('profiles')
-    .select('org_id')
+    .select('org_id, organizations!inner(subscription_tier)')
     .eq('id', user.id)
     .single()
 
@@ -97,26 +96,29 @@ async function getOrganizationId(supabase: any): Promise<string> {
     throw new Error(`Organization not found for current user profile.${detail}`)
   }
 
-  return profile.org_id
+  const org = Array.isArray(profile.organizations) ? profile.organizations[0] : profile.organizations;
+  const tier = org?.subscription_tier || 'starter';
+
+  return { orgId: profile.org_id, tier }
 }
 
 /**
  * Helper to check template limits for an organization.
  */
-async function checkTemplateLimits(orgId: string, supabaseAdmin: any): Promise<{ allowed: boolean; error?: string }> {
-  const { data: org } = await supabaseAdmin.from('organizations').select('subscription_tier').eq('id', orgId).single()
-  const tier = org?.subscription_tier || 'starter'
+async function checkTemplateLimits(orgId: string, tier: string, supabaseAdmin: any): Promise<{ allowed: boolean; error?: string }> {
 
   const { count, error } = await supabaseAdmin
-    .from('checklist_templates')
-    .select('id', { count: 'exact', head: true })
-    .eq('org_id', orgId)
+    .from('templates')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
     .not('name', 'ilike', 'Ad-hoc:%')
 
-  if (error) return { allowed: false, error: 'Could not fetch current template usage.' }
+  if (error) return { allowed: false, error: `Could not fetch current template usage: ${error.message || JSON.stringify(error)}` }
 
-  if (tier === 'starter' && (count || 0) >= 3) return { allowed: false, error: 'Starter tier is limited to 3 custom templates.' }
-  if (tier === 'growth' && (count || 0) >= 20) return { allowed: false, error: 'Growth tier is limited to 20 custom templates.' }
+  const templateCount = count || 0
+
+  if (tier === 'starter' && templateCount >= 3) return { allowed: false, error: 'Starter tier is limited to 3 custom templates.' }
+  if (tier === 'growth' && templateCount >= 20) return { allowed: false, error: 'Growth tier is limited to 20 custom templates.' }
 
   return { allowed: true }
 }
@@ -129,8 +131,6 @@ export async function createTemplate(
   description: string
 ): Promise<ActionResponse> {
   try {
-    await assertPremiumServer()
-
     const validatedFields = CreateTemplateSchema.safeParse({ name, description })
     if (!validatedFields.success) {
       const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
@@ -142,23 +142,25 @@ export async function createTemplate(
     const { name: parsedName, description: parsedDescription } = validatedFields.data
 
     const supabase = await createClient()
-    const orgId = await getOrganizationId(supabase)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const { orgId, tier } = await getOrganizationAndTier(supabase)
 
     // Use admin client to bypass RLS on checklist_templates
     const db = createAdminClient()
     
     // Check template limits before proceeding
-    const limitCheck = await checkTemplateLimits(orgId, db)
+    const limitCheck = await checkTemplateLimits(orgId, tier, db)
     if (!limitCheck.allowed) {
       return { success: false, error: limitCheck.error, requiresUpgrade: true }
     }
 
     const { data, error } = await db
-      .from('checklist_templates')
+      .from('templates')
       .insert({
         name: parsedName,
         description: parsedDescription,
-        org_id: orgId,
+        organization_id: orgId,
       })
       .select('id')
       .single()
@@ -176,57 +178,82 @@ export async function createTemplate(
 }
 
 /**
- * Copies a standard template to the organization's custom templates.
+ * Copies a standard template from the templates table to the organization's custom templates.
  */
 export async function copyStandardTemplate(
   stdId: string
 ): Promise<ActionResponse> {
   try {
-    await assertPremiumServer()
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const { orgId, tier } = await getOrganizationAndTier(supabase)
+    const db = createAdminClient()
 
-    const stdData = STANDARD_TEMPLATES_DATA[stdId]
-    if (!stdData) {
-      return { success: false, error: 'Standard template not found.' }
+    // 1. Fetch the standard template from the DB
+    const { data: stdTemplate, error: fetchErr } = await db
+      .from('templates')
+      .select('name, description, items')
+      .eq('id', stdId)
+      .eq('is_system', true)
+      .single()
+
+    if (fetchErr || !stdTemplate) {
+      return { success: false, error: 'Standard template not found in database.' }
     }
 
-    const supabase = await createClient()
-    const orgId = await getOrganizationId(supabase)
-
-    const db = createAdminClient()
-    
-    // Check limits
-    const limitCheck = await checkTemplateLimits(orgId, db)
+    // 2. Check limits
+    const limitCheck = await checkTemplateLimits(orgId, tier, db)
     if (!limitCheck.allowed) {
       return { success: false, error: limitCheck.error, requiresUpgrade: true }
     }
 
-    const { data: newTemplate, error } = await db
-      .from('checklist_templates')
+    // 3. Create the custom template copy
+    const { data: newTemplate, error: insertErr } = await db
+      .from('templates')
       .insert({
-        name: stdData.name,
-        description: stdData.description,
-        org_id: orgId,
+        name: stdTemplate.name,
+        description: stdTemplate.description,
+        organization_id: orgId,
       })
       .select('id')
       .single()
 
-    if (error || !newTemplate) {
-      return { success: false, error: error?.message || 'Failed to copy template.' }
+    if (insertErr || !newTemplate) {
+      return { success: false, error: insertErr?.message || 'Failed to copy template.' }
     }
 
-    const itemRows = stdData.items.map((item, index) => ({
-      template_id: newTemplate.id,
-      label: item.label,
-      requires_photo: item.requiresPhoto,
-      sort_order: index + 1,
-    }))
+    // 4. Parse JSONB items and insert them into template_items
+    // Structure of items JSONB is expected to be array of sections, each having tasks:
+    // [{ section: "Section Name", tasks: [{ label: "Task name", requiresPhoto: false }] }]
+    const sections = Array.isArray(stdTemplate.items) ? stdTemplate.items : []
+    const itemRows: any[] = []
+    let sortOrder = 1
 
-    const { error: itemsErr } = await db
-      .from('template_items')
-      .insert(itemRows)
+    sections.forEach((sec: any) => {
+      const sectionName = sec.section || ''
+      const tasks = Array.isArray(sec.tasks) ? sec.tasks : []
+      
+      tasks.forEach((task: any) => {
+        // Prepend section name to task label for checklist flat model if needed, or keep label as is
+        const label = sectionName ? `[${sectionName}] ${task.label}` : task.label
+        itemRows.push({
+          template_id: newTemplate.id,
+          label: label,
+          requires_photo: !!task.requiresPhoto,
+          sort_order: sortOrder++,
+        })
+      })
+    })
 
-    if (itemsErr) {
-      return { success: false, error: `Failed to save checklist items: ${itemsErr.message}` }
+    if (itemRows.length > 0) {
+      const { error: itemsErr } = await db
+        .from('template_items')
+        .insert(itemRows)
+
+      if (itemsErr) {
+        return { success: false, error: `Failed to save checklist items: ${itemsErr.message}` }
+      }
     }
 
     revalidatePath('/templates')
@@ -246,8 +273,6 @@ export async function addTemplateItem(
   requiresPhoto: boolean
 ): Promise<ActionResponse> {
   try {
-    await assertPremiumServer()
-
     const validatedFields = AddTemplateItemSchema.safeParse({ templateId, label, requiresPhoto })
     if (!validatedFields.success) {
       const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
@@ -258,10 +283,10 @@ export async function addTemplateItem(
 
     const { templateId: parsedTemplateId, label: parsedLabel, requiresPhoto: parsedRequiresPhoto } = validatedFields.data
 
-    const supabase = await createClient()
+    const db = createAdminClient()
 
     // Determine the next sort order value
-    const { data: maxItem, error: fetchError } = await supabase
+    const { data: maxItem, error: fetchError } = await db
       .from('template_items')
       .select('sort_order')
       .eq('template_id', parsedTemplateId)
@@ -275,7 +300,7 @@ export async function addTemplateItem(
 
     const nextSortOrder = maxItem ? maxItem.sort_order + 1 : 0
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('template_items')
       .insert({
         template_id: parsedTemplateId,
@@ -283,7 +308,7 @@ export async function addTemplateItem(
         requires_photo: parsedRequiresPhoto,
         sort_order: nextSortOrder,
       })
-      .select('id, template_id, label, requires_photo, sort_order, created_at')
+      .select('id, template_id, label, requires_photo, sort_order')
       .single()
 
     if (error) {
@@ -305,8 +330,6 @@ export async function updateItemOrder(
   items: { id: string; sort_order: number }[]
 ): Promise<ActionResponse> {
   try {
-    await assertPremiumServer()
-
     const validatedFields = UpdateItemOrderSchema.safeParse({ items })
     if (!validatedFields.success) {
       const errorMsg = Object.values(validatedFields.error.flatten().fieldErrors)
@@ -316,13 +339,13 @@ export async function updateItemOrder(
     }
 
     const { items: parsedItems } = validatedFields.data
-    const supabase = await createClient()
+    const db = createAdminClient()
 
     // Extract item IDs to perform bulk select
     const itemIds = parsedItems.map((item) => item.id)
 
     // 1. Fetch full records for the items being updated (to keep all NOT NULL columns when upserting)
-    const { data: existingItems, error: fetchError } = await supabase
+    const { data: existingItems, error: fetchError } = await db
       .from('template_items')
       .select('id, template_id, label, requires_photo, sort_order')
       .in('id', itemIds)
@@ -344,7 +367,7 @@ export async function updateItemOrder(
     })
 
     // 3. Perform a single batch upsert to atomically reorder
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await db
       .from('template_items')
       .upsert(updatedItems)
 
@@ -355,6 +378,50 @@ export async function updateItemOrder(
     // Multi-tenant cache invalidation
     // Revalidate templates path pattern
     revalidatePath('/templates/[id]', 'layout')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'An error occurred.' }
+  }
+}
+
+/**
+ * Deletes a template and all its associated items.
+ */
+export async function deleteTemplate(templateId: string): Promise<ActionResponse> {
+  try {
+    const supabase = await createClient()
+    const { orgId } = await getOrganizationAndTier(supabase)
+    const db = createAdminClient()
+
+    // Ensure the template belongs to the current organization
+    const { data: template, error: fetchErr } = await db
+      .from('templates')
+      .select('id, organization_id')
+      .eq('id', templateId)
+      .single()
+
+    if (fetchErr || !template) {
+      return { success: false, error: 'Template not found.' }
+    }
+
+    if (template.organization_id !== orgId) {
+      return { success: false, error: 'Unauthorized to delete this template.' }
+    }
+
+    // Delete the template (items are cascaded or we delete them explicitly)
+    await db.from('template_items').delete().eq('template_id', templateId)
+
+    const { error: deleteErr } = await db
+      .from('templates')
+      .delete()
+      .eq('id', templateId)
+
+    if (deleteErr) {
+      return { success: false, error: deleteErr.message }
+    }
+
+    revalidatePath('/templates')
+    revalidatePath('/dashboard/dispatch')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'An error occurred.' }

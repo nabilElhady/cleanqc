@@ -126,14 +126,15 @@ export default function DashboardLayoutClient({
               href={item.href}
               onClick={() => setMobileOpen(false)}
               title={item.description}
-              className={`group flex items-center gap-3 px-3 py-2.5 text-sm transition-colors duration-150 cursor-pointer rounded-sm ${
+              className={`group flex items-center gap-3 px-3 py-2.5 text-sm transition-all duration-200 cursor-pointer rounded-r-lg border-l-4 ${
                 isActive
-                  ? 'text-[#09090B] font-bold bg-[#F4F4F5]'
-                  : 'text-[#71717A] font-medium hover:text-[#09090B] hover:bg-[#F4F4F5]'
+                  ? 'text-[#09090B] font-bold bg-[#E4E4E7]/50 border-[#09090B]'
+                  : 'text-[#71717A] font-medium hover:text-[#09090B] hover:bg-[#F4F4F5] border-transparent hover:border-zinc-300'
               }`}
             >
               <Icon
-                className={`h-4 w-4 shrink-0 ${
+                strokeWidth={2.5}
+                className={`h-4 w-4 shrink-0 transition-colors ${
                   isActive ? 'text-[#09090B]' : 'text-[#A1A1AA] group-hover:text-[#09090B]'
                 }`}
               />
@@ -144,45 +145,15 @@ export default function DashboardLayoutClient({
         })}
       </nav>
 
-      {/* ── Crew View — visually separated at bottom ── */}
-      <div className="px-4 pb-2">
-        <div className="border-t border-[#E4E4E7] pt-4">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-[#A1A1AA] px-3 mb-2">
-            Crew Access
-          </p>
-          <Link
-            href="/crew/jobs"
-            onClick={() => setMobileOpen(false)}
-            title="Preview what your cleaners see on their phone"
-            className={`group flex items-center gap-3 px-3 py-2.5 text-sm transition-colors duration-150 cursor-pointer rounded-sm ${
-              pathname.startsWith('/crew')
-                ? 'text-[#09090B] font-bold bg-[#F4F4F5]'
-                : 'text-[#71717A] font-medium hover:text-[#09090B] hover:bg-[#F4F4F5]'
-            }`}
-          >
-            <Smartphone
-              className={`h-4 w-4 shrink-0 ${
-                pathname.startsWith('/crew')
-                  ? 'text-[#09090B]'
-                  : 'text-[#A1A1AA] group-hover:text-[#09090B]'
-              }`}
-            />
-            <span className="flex-1">Crew View</span>
-            <span className="text-[9px] font-bold bg-[#E4E4E7] text-[#71717A] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
-              Preview
-            </span>
-          </Link>
-        </div>
-      </div>
 
       {/* Sign Out */}
       <div className="p-4 border-t border-[#E4E4E7]">
         <form action={signOut}>
           <button
             type="submit"
-            className="flex w-full items-center gap-3 px-3 py-2 text-sm font-medium text-[#71717A] hover:text-[#09090B] transition-colors cursor-pointer"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#71717A] hover:text-[#09090B] hover:bg-[#F4F4F5] rounded-r-lg border-l-4 border-transparent hover:border-zinc-300 transition-all duration-200 cursor-pointer"
           >
-            <LogOut className="h-4 w-4 shrink-0" />
+            <LogOut strokeWidth={2.5} className="h-4 w-4 shrink-0 transition-colors text-[#A1A1AA] group-hover:text-[#09090B]" />
             Sign Out
           </button>
         </form>
@@ -227,8 +198,8 @@ export default function DashboardLayoutClient({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background relative">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(9,9,11,0.09)_1.5px,transparent_1.5px),linear-gradient(to_bottom,rgba(9,9,11,0.09)_1.5px,transparent_1.5px)] bg-[size:32px_32px] pointer-events-none z-0" />
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-100 relative">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.2)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.2)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
         <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full relative z-10">
           {children}
         </main>

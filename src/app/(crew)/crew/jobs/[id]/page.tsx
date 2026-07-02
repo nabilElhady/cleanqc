@@ -7,6 +7,7 @@ import { CheckCircle2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { cookies } from 'next/headers'
+import { StatusPill } from '@/components/ui/status-pill'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,29 +44,30 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
     notFound()
   }
 
-  let checklistTemplate = null
+  let template = null
   if (rawJob.template_id) {
-    const { data: template } = await db
-      .from('checklist_templates')
-      .select('id, name')
+    const { data: tData } = await db
+      .from('templates')
+      .select('id, name, items')
       .eq('id', rawJob.template_id)
       .single()
-    if (template) {
-      checklistTemplate = template
+    
+    if (tData) {
+      template = tData
     }
   }
 
   const job = {
     ...rawJob,
-    checklist_templates: checklistTemplate
+    templates: template
   }
 
   // 3. Security check: Only assigned crew member can view
   if (job.assigned_to !== activeUserId) {
     return (
-      <div className="space-y-4 text-center py-12 text-[#FAFAFA]">
-        <h2 className="text-xl font-bold text-rose-450">Access Denied</h2>
-        <p className="text-[#A1A1AA] text-sm">
+      <div className="space-y-4 text-center py-12 text-[#09090B]">
+        <h2 className="text-xl font-bold text-rose-500">Access Denied</h2>
+        <p className="text-[#71717A] text-sm">
           You are not authorized to view or edit this checklist.
         </p>
         <div className="pt-2">
@@ -82,24 +84,24 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
   // 4. Job completed check
   if (job.status === 'completed') {
     return (
-      <div className="space-y-6 py-6 text-[#FAFAFA]">
-        <Link href="/crew/jobs" className="inline-flex items-center text-sm text-[#A1A1AA] hover:text-[#FAFAFA] gap-1 transition-colors">
+      <div className="space-y-6 py-6 text-[#09090B]">
+        <Link href="/crew/jobs" className="inline-flex items-center text-sm text-[#71717A] hover:text-[#09090B] gap-1 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Jobs</span>
         </Link>
 
-        <Card className="border-white/8 bg-[#18181B] py-12 px-4 text-center">
+        <Card className="bg-white border-[#E4E4E7] shadow-sm py-12 px-4 text-center">
           <CardContent className="space-y-4">
             <div className="mx-auto h-12 w-12 rounded-full bg-[#10B981]/10 flex items-center justify-center border border-[#10B981]/20">
               <CheckCircle2 className="h-6 w-6 text-[#10B981]" />
             </div>
-            <h3 className="font-semibold text-[#FAFAFA] text-lg">Job Completed</h3>
-            <p className="text-[#A1A1AA] text-sm max-w-xs mx-auto">
+            <h3 className="font-semibold text-[#09090B] text-lg">Job Completed</h3>
+            <p className="text-[#71717A] text-sm max-w-xs mx-auto">
               This checklist has already been submitted and the status is marked as completed.
             </p>
             <div className="pt-2">
               <Link href="/crew/jobs" passHref>
-                <Button className="cursor-pointer bg-[#10B981] hover:bg-[#10B981]/90 text-white border-none">
+                <Button className="cursor-pointer bg-[#10B981] hover:bg-[#10B981]/90 text-white border-none shadow-sm">
                   Back to Dashboard
                 </Button>
               </Link>
@@ -111,13 +113,28 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
   }
 
   // 5. Fetch template items ordered by sort_order (using admin client to bypass RLS)
-  const { data: items, error: itemsError } = await db
-    .from('template_items')
-    .select('id, label, requires_photo, sort_order')
-    .eq('template_id', job.template_id)
-    .order('sort_order', { ascending: true })
+  let templateItems: any[] = []
+  
+  if (template && template.items && (template.items as any[]).length > 0) {
+    // If we fell back to a system template, it will have 'items' as JSONB
+    const systemSections = (template.items as any[])
+    templateItems = systemSections.flatMap((sec, secIdx) => 
+      (sec.tasks || []).map((task: any, taskIdx: number) => ({
+        id: task.id || `${sec.section}-${secIdx}-${taskIdx}`,
+        label: task.label,
+        requires_photo: task.requiresPhoto || false,
+        sort_order: secIdx * 1000 + taskIdx, // Ensure consistent ordering
+      }))
+    )
+  } else if (job.template_id) {
+    const { data: items, error: itemsError } = await db
+      .from('template_items')
+      .select('id, label, requires_photo, sort_order')
+      .eq('template_id', job.template_id)
+      .order('sort_order', { ascending: true })
 
-  const templateItems = items || []
+    templateItems = items || []
+  }
 
   // 6. Update job status to 'in_progress' if it is currently 'pending'
   if (job.status === 'pending') {
@@ -128,18 +145,18 @@ export default async function ActiveChecklistPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6 text-[#FAFAFA]">
-      <Link href="/crew/jobs" className="inline-flex items-center text-sm text-[#A1A1AA] hover:text-[#FAFAFA] gap-1 transition-colors">
+    <div className="max-w-md mx-auto bg-white border border-[#E4E4E7] shadow-md p-4 sm:p-6 rounded-xl space-y-6 text-[#09090B]">
+      <Link href="/crew/jobs" className="inline-flex items-center text-sm text-[#71717A] hover:text-[#09090B] gap-1 transition-colors">
         <ArrowLeft className="h-4 w-4" />
         <span>Back to Jobs</span>
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-[#FAFAFA]">{job.title}</h1>
-        <p className="text-[#A1A1AA] text-xs mt-0.5 truncate">{job.location}</p>
-        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border border-[#8B5CF6]/20 bg-[#8B5CF6]/10 text-[#8B5CF6]">
+        <h1 className="text-xl font-bold tracking-tight text-[#09090B]">{job.title}</h1>
+        <p className="text-[#71717A] text-xs mt-0.5 truncate">{job.location}</p>
+        <StatusPill variant="in_progress" className="mt-2">
           In Progress
-        </div>
+        </StatusPill>
       </div>
 
       <ChecklistForm

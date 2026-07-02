@@ -73,7 +73,7 @@ export default async function CrewJobExecutionPage({ params }: PageProps) {
       org_id,
       assigned_to,
       template_id,
-      checklist_templates!template_id (
+      templates!template_id (
         id,
         name,
         description

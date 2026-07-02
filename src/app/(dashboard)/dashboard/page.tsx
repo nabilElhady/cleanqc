@@ -35,11 +35,13 @@ export default async function DashboardPage() {
     )
   }
 
-  // Fetch count statistics
+  const { data: teamMembers } = await db.from('profiles').select('id').eq('org_id', profile.org_id)
+  const teamIds = teamMembers?.map(m => m.id) || [user.id]
+
   const [jobsRes, templatesRes, teamRes] = await Promise.all([
     db.from('jobs').select('id, status').eq('org_id', profile.org_id),
-    db.from('checklist_templates').select('id').eq('org_id', profile.org_id),
-    db.from('profiles').select('id').eq('org_id', profile.org_id),
+    db.from('templates').select('id').eq('organization_id', profile.org_id),
+    { data: teamMembers, error: null },
   ])
 
   const allJobs = jobsRes.data || []

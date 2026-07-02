@@ -9,7 +9,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-serif);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -100,8 +101,8 @@
   --chart-4: #A1A1AA;
   --chart-5: #E4E4E7;
 
-  /* Radius - minimal/sharp for editorial style */
-  --radius: 0rem;
+  /* Radius - default base for components */
+  --radius: 0.5rem;
 
   /* Sidebar */
   --sidebar: #FAFAFA;
@@ -153,8 +154,6 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    /* Eliminate box shadows across cards/buttons to flatten UI */
-    box-shadow: none !important;
   }
   body {
     @apply bg-background text-foreground;

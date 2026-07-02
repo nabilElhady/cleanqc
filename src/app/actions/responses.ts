@@ -4,10 +4,11 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ActionResponse } from './templates'
 import { assertPremiumServer } from '@/lib/subscription'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 const JobResponseInputSchema = z.object({
-  itemId: z.string().uuid('Invalid item ID.'),
+  itemId: z.string().min(1, 'Invalid item ID.'),
   checked: z.boolean(),
   photoPath: z.string().max(500).nullable().optional(),
   gpsLat: z.number().min(-90, 'Latitude must be between -90 and 90.').max(90, 'Latitude must be between -90 and 90.').nullable().optional(),
@@ -50,12 +51,13 @@ export async function submitJobResponse(
 
     // Cookie-based client ONLY for auth identity
     const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    const cookieStore = await cookies()
+    const crewToken = cookieStore.get('crew_session_token')?.value
+    const activeUserId = user?.id || crewToken
+
+    if (!activeUserId) {
       return { success: false, error: 'Unauthorized. Please log in.' }
     }
 
@@ -73,7 +75,7 @@ export async function submitJobResponse(
       return { success: false, error: 'Job not found.' }
     }
 
-    if (job.assigned_to !== user.id) {
+    if (job.assigned_to !== activeUserId) {
       return { success: false, error: 'Access denied. This job is not assigned to you.' }
     }
 

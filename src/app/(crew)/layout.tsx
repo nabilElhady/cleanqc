@@ -29,7 +29,7 @@ export default async function CrewLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF] text-[#09090B] font-sans antialiased pb-12 relative">
+    <div className="min-h-screen bg-neutral-50 text-[#09090B] font-sans antialiased pb-12 relative">
       {/* Crisp Grid Background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
       

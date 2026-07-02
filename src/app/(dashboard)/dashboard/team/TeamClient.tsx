@@ -166,20 +166,20 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
   }
 
   return (
-    <div className="space-y-12 text-black">
+    <div className="space-y-12 text-[#09090B]">
       {/* Invite Form Section */}
-      <div className="border border-black bg-white p-8 border-t-2 border-l-2 border-b-4 border-r-4">
-        <h2 className="font-mono text-xs font-black tracking-widest uppercase mb-1 text-black">
+      <div className="rounded-2xl bg-white border border-[#E4E4E7] shadow-md p-8 transition-all relative z-10">
+        <h2 className="text-xs font-bold tracking-widest uppercase mb-1 text-[#09090B]">
           Add or Invite a Team Member
         </h2>
-        <p className="font-mono text-[10px] text-zinc-400 uppercase tracking-wide mb-6">
+        <p className="text-[10px] text-[#71717A] uppercase tracking-wide mb-6">
           Managers receive secure email invites. Crew members are created instantly with a login passcode.
         </p>
 
         <form onSubmit={handleInviteSubmit} className="space-y-6">
           <div className="flex flex-col md:flex-row gap-6 items-end">
             <div className="w-full md:w-48">
-              <label htmlFor="role" className="block font-mono text-[10px] font-black uppercase tracking-wider mb-2 text-zinc-400">
+              <label htmlFor="role" className="block text-[10px] font-bold uppercase tracking-wider mb-2 text-[#71717A]">
                 SELECT ROLE
               </label>
               <select
@@ -191,7 +191,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                   setInviteSent(false)
                   setPasscodeGenerated(null)
                 }}
-                className="w-full bg-white border-b border-black py-2 focus:outline-none font-mono text-sm text-black rounded-none cursor-pointer"
+                className="w-full px-5 py-3 rounded-full bg-white border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] cursor-pointer shadow-sm transition-colors duration-200 focus:outline-none"
               >
                 <option value="crew">Crew Member (Passcode)</option>
                 <option value="manager">Manager (Email Invite)</option>
@@ -199,7 +199,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
             </div>
 
             <div className="flex-1 w-full">
-              <label htmlFor="name" className="block font-mono text-[10px] font-black uppercase tracking-wider mb-2 text-zinc-400">
+              <label htmlFor="name" className="block text-[10px] font-bold uppercase tracking-wider mb-2 text-[#71717A]">
                 FULL NAME
               </label>
               <input
@@ -209,13 +209,13 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Jane Doe"
-                className="w-full bg-transparent border-b border-black py-2 focus:outline-none font-mono text-sm placeholder:text-zinc-400 text-black rounded-none"
+                className="w-full px-5 py-3 rounded-full bg-white border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder:text-zinc-600 focus:outline-none transition-colors duration-200 shadow-sm"
               />
             </div>
 
             {role === 'manager' && (
               <div className="flex-1 w-full">
-                <label htmlFor="email" className="block font-mono text-[10px] font-black uppercase tracking-wider mb-2 text-zinc-400">
+                <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider mb-2 text-[#71717A]">
                   MANAGER EMAIL ADDRESS
                 </label>
                 <input
@@ -225,7 +225,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="manager@organization.com"
-                  className="w-full bg-transparent border-b border-black py-2 focus:outline-none font-mono text-sm placeholder:text-zinc-400 text-black rounded-none"
+                  className="w-full px-5 py-3 rounded-full bg-white border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder:text-zinc-600 focus:outline-none transition-colors duration-200 shadow-sm"
                 />
               </div>
             )}
@@ -233,7 +233,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
             {role === 'crew' && (
               <div className="flex-1 w-full flex gap-3 items-end">
                 <div className="flex-1">
-                  <label htmlFor="passcode" className="block font-mono text-[10px] font-black uppercase tracking-wider mb-2 text-zinc-400">
+                  <label htmlFor="passcode" className="block text-[10px] font-bold uppercase tracking-wider mb-2 text-[#71717A]">
                     PASSCODE (6-10 CHARS, OPTIONAL)
                   </label>
                   <input
@@ -243,13 +243,13 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                     value={passcode}
                     onChange={(e) => setPasscode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                     placeholder="AUTO-GENERATED"
-                    className="w-full bg-transparent border-b border-black py-2 focus:outline-none font-mono text-sm placeholder:text-zinc-400 text-black rounded-none"
+                    className="w-full px-5 py-3 rounded-full bg-white border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder:text-zinc-600 focus:outline-none transition-colors duration-200 shadow-sm"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleGeneratePasscode}
-                  className="border border-black bg-white hover:bg-black hover:text-white px-4 py-2 font-mono text-[10px] font-black uppercase tracking-wider transition-colors duration-150 rounded-none cursor-pointer h-[38px] flex items-center justify-center shrink-0"
+                  className="px-6 py-3 rounded-full bg-[#FAFAFA] border border-[#E4E4E7] text-[#09090B] hover:bg-[#F4F4F5] text-[10px] font-bold uppercase tracking-wider transition-colors duration-200 shadow-sm cursor-pointer shrink-0"
                 >
                   Generate
                 </button>
@@ -259,7 +259,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full md:w-auto border border-black bg-black text-white hover:bg-white hover:text-black disabled:bg-zinc-200 disabled:text-zinc-500 py-3.5 px-8 font-mono text-xs font-black tracking-widest uppercase transition-colors duration-150 rounded-none cursor-pointer flex items-center justify-center gap-2"
+              className="w-full md:w-auto bg-[#09090B] text-white hover:bg-[#27272A] hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:bg-zinc-200 disabled:text-zinc-500 py-3.5 px-8 text-xs font-bold tracking-widest uppercase transition-all duration-200 rounded-full cursor-pointer flex items-center justify-center gap-2 shadow-sm"
             >
               {isSubmitting ? (
                 <>
@@ -273,19 +273,18 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
           </div>
 
           {error && (
-            <p className="font-mono text-xs font-black text-red-500 uppercase tracking-wider">
+            <p className="text-xs font-bold text-red-500 uppercase tracking-wider mt-4">
               ERROR: {error}
             </p>
           )}
         </form>
 
-        {/* Email sent successfully message */}
         {inviteSent && (
-          <div className="mt-8 p-6 border-2 border-dashed border-zinc-900 bg-zinc-50 space-y-2">
-            <span className="font-mono text-xs font-black uppercase tracking-wider text-black block">
+          <div className="mt-8 p-6 rounded-xl border border-dashed border-[#E4E4E7] bg-[#FAFAFA] space-y-2 shadow-sm">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#09090B] block">
               INVITATION DISPATCHED SUCCESSFULLY!
             </span>
-            <p className="font-mono text-[10px] text-zinc-500 uppercase leading-relaxed">
+            <p className="text-[10px] text-[#71717A] uppercase leading-relaxed">
               A secure onboarding link has been emailed to the Manager via Resend.
             </p>
           </div>
@@ -293,25 +292,25 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
 
         {/* Passcode Generated message */}
         {passcodeGenerated && (
-          <div className="mt-8 p-6 border-2 border-dashed border-black bg-zinc-50 space-y-3">
-            <span className="font-mono text-xs font-black uppercase tracking-wider text-black block">
+          <div className="mt-8 p-6 rounded-xl border border-dashed border-[#E4E4E7] bg-[#FAFAFA] space-y-3 shadow-sm">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#09090B] block">
               CREW MEMBER REGISTERED INSTANTLY
             </span>
-            <p className="font-mono text-[10px] text-zinc-500 uppercase leading-relaxed">
+            <p className="text-[10px] text-[#71717A] uppercase leading-relaxed">
               No email was sent. Copy and share the unique 6-digit access passcode below directly with your crew member so they can log in.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
               <input
                 type="text"
                 readOnly
                 value={passcodeGenerated}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
-                className="w-full sm:w-48 bg-white border border-black p-3 font-mono text-lg font-black tracking-widest text-center select-all focus:outline-none rounded-none text-black"
+                className="w-full sm:w-48 bg-[#FFFFFF] border border-[#E4E4E7] p-3 text-lg font-bold tracking-widest text-center select-all focus:outline-none rounded-lg text-[#09090B] shadow-sm"
               />
               <button
                 type="button"
                 onClick={handleCopyCode}
-                className="border border-black bg-white hover:bg-black hover:text-white px-6 py-3 font-mono text-xs font-black uppercase transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer rounded-none"
+                className="bg-[#09090B] text-white hover:bg-[#27272A] hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm px-6 py-3 text-xs font-bold uppercase transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer rounded-full shadow-sm"
               >
                 {copied ? (
                   <>
@@ -328,48 +327,50 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
       </div>
 
       {/* Active Crew Section */}
-      <div className="border border-black bg-white p-8 border-t-2 border-l-2 border-b-4 border-r-4">
+      <div className="rounded-2xl bg-white border border-[#E4E4E7] shadow-md p-8 transition-all relative z-10">
         <div className="flex items-center gap-2 mb-6">
-          <Users className="h-5 w-5 text-black" />
-          <h2 className="font-mono text-sm font-black tracking-widest uppercase text-black">
+          <Users className="h-5 w-5 text-[#09090B]" />
+          <h2 className="text-sm font-bold tracking-widest uppercase text-[#09090B]">
             ACTIVE TEAM MEMBERS
           </h2>
         </div>
 
         {crew.length === 0 ? (
-          <div className="text-center py-12 border border-dashed border-zinc-300">
-            <Users className="h-8 w-8 text-zinc-300 mx-auto mb-3" />
-            <p className="font-mono text-sm font-bold text-zinc-400">No team members yet</p>
+          <div className="text-center py-12 border border-dashed border-[#E4E4E7] rounded-xl bg-[#FAFAFA]">
+            <div className="bg-zinc-100 p-3 rounded-full mb-3 mx-auto w-fit">
+              <Users strokeWidth={1.5} className="h-6 w-6 text-[#71717A]" />
+            </div>
+            <p className="text-sm font-medium text-[#71717A]">No team members yet</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse font-mono text-xs">
+            <table className="w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-black text-left">
-                  <th className="py-4 font-black uppercase tracking-wider text-zinc-500">NAME</th>
-                  <th className="py-4 font-black uppercase tracking-wider text-zinc-500">EMAIL / PASSCODE</th>
-                  <th className="py-4 font-black uppercase tracking-wider text-zinc-500">ROLE</th>
-                  <th className="py-4 font-black uppercase tracking-wider text-zinc-500">STATUS</th>
-                  <th className="py-4 font-black uppercase tracking-wider text-zinc-500 text-right">ACTIONS</th>
+                <tr className="border-b-2 border-[#E4E4E7] bg-[#FAFAFA] text-left">
+                  <th className="py-4 px-4 font-bold uppercase tracking-wider text-[#71717A] rounded-tl-lg">NAME</th>
+                  <th className="py-4 px-4 font-bold uppercase tracking-wider text-[#71717A]">EMAIL / PASSCODE</th>
+                  <th className="py-4 px-4 font-bold uppercase tracking-wider text-[#71717A]">ROLE</th>
+                  <th className="py-4 px-4 font-bold uppercase tracking-wider text-[#71717A]">STATUS</th>
+                  <th className="py-4 px-4 font-bold uppercase tracking-wider text-[#71717A] text-right rounded-tr-lg">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200">
+              <tbody className="divide-y divide-[#E4E4E7]">
                 {crew.map((member) => {
                   const isConfirming = confirmDeleteId === member.id
                   const isDeleting = isDeletingId === member.id
                   const isOwner = member.role === 'owner'
 
                   return (
-                    <tr key={member.id} className="hover:bg-zinc-50 transition-colors">
-                      <td className="py-4 font-bold text-black uppercase">{member.fullName}</td>
-                      <td className="py-4 text-zinc-650">
+                    <tr key={member.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
+                      <td className="py-4 px-4 font-bold text-[#09090B] uppercase">{member.fullName}</td>
+                      <td className="py-4 px-4 text-[#71717A]">
                         <div className="flex items-center gap-2">
                           <span>{member.email}</span>
                           {member.email && (
                             <button
                               type="button"
                               onClick={() => handleCopyText(member.email, member.id)}
-                              className="p-1 hover:bg-zinc-100 border border-transparent hover:border-black transition-colors rounded-none cursor-pointer flex items-center justify-center"
+                              className="p-1 hover:bg-[#F4F4F5] rounded-md transition-colors cursor-pointer flex items-center justify-center"
                               title="Copy to clipboard"
                             >
                               {copiedId === member.id ? (
@@ -381,21 +382,21 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                           )}
                         </div>
                       </td>
-                      <td className="py-4 font-bold text-black uppercase">{member.role}</td>
-                      <td className="py-4">
+                      <td className="py-4 px-4 font-bold text-[#09090B] uppercase">{member.role}</td>
+                      <td className="py-4 px-4">
                         <span
-                          className={`inline-block px-2.5 py-1 text-[9px] font-black tracking-wider border rounded-none ${
+                          className={`inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest border rounded-full ${
                             member.status === 'ACTIVE'
-                              ? 'bg-zinc-100 text-black border-black'
-                              : 'bg-yellow-55 text-yellow-650 border-yellow-450'
+                              ? 'bg-zinc-100 text-[#09090B] border-[#E4E4E7]'
+                              : 'bg-yellow-100 text-yellow-800 border-yellow-300'
                           }`}
                         >
                           {member.status}
                         </span>
                       </td>
-                      <td className="py-4 text-right">
+                      <td className="py-4 px-4 text-right">
                         {isOwner ? (
-                          <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase">OWNER</span>
+                          <span className="text-[9px] font-bold text-[#A1A1AA] uppercase">OWNER</span>
                         ) : isConfirming ? (
                           <div className="flex items-center justify-end gap-2">
                             <span className="text-[9px] font-bold text-red-500 uppercase mr-1">CONFIRM?</span>
@@ -403,7 +404,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                               type="button"
                               onClick={() => handleDelete(member.id)}
                               disabled={isDeleting}
-                              className="px-2.5 py-1 bg-red-650 text-white hover:bg-red-750 text-[10px] font-bold uppercase border border-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+                              className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded-md text-[10px] font-bold uppercase transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
                             >
                               {isDeleting ? '...' : 'YES'}
                             </button>
@@ -411,7 +412,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                               type="button"
                               onClick={() => setConfirmDeleteId(null)}
                               disabled={isDeleting}
-                              className="px-2.5 py-1 bg-white text-black hover:bg-zinc-100 text-[10px] font-bold uppercase border border-black transition-colors cursor-pointer"
+                              className="px-3 py-1.5 bg-white text-[#09090B] hover:bg-[#FAFAFA] rounded-md text-[10px] font-bold uppercase border border-[#E4E4E7] transition-colors cursor-pointer shadow-sm"
                             >
                               NO
                             </button>
@@ -420,7 +421,7 @@ export default function TeamClient({ initialCrew, companyId }: TeamClientProps) 
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteId(member.id)}
-                            className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer"
+                            className="p-1.5 text-[#A1A1AA] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
                             title="Delete team member"
                           >
                             <Trash2 className="h-4 w-4" />

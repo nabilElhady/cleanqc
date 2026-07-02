@@ -107,13 +107,13 @@ export default function ChecklistForm({ jobId, orgId, sections }: ChecklistFormP
         console.warn('Image compression failed, uploading raw file:', compErr)
       }
 
-      // Upload directly to job-photos/org_id/job_id/item_id.jpg
+      // Upload directly to job-proofs/org_id/job_id/item_id.jpg
       const supabase = createClient()
       const fileExtension = file.name.split('.').pop() || 'jpg'
       const storagePath = `${orgId}/${jobId}/${itemId}.${fileExtension}`
 
       const { error: uploadErr } = await supabase.storage
-        .from('job-photos')
+        .from('job-proofs')
         .upload(storagePath, uploadFile, {
           upsert: true,
           contentType: file.type || 'image/jpeg',

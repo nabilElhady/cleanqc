@@ -155,47 +155,36 @@ export async function POST(request: Request) {
           const payments = (subscription as any).transaction?.payments || (subscription as any).payments
           const cardDetails = payments?.[0]?.method_details?.card
           
-          if (cardDetails) {
+          // Extract ownerId directly from webhook customData (metadata)
+          const ownerId = subscription.customData?.userId || subscription.customData?.ownerId
+          
+          if (cardDetails && ownerId) {
             const last4 = cardDetails.last4
             const expiry = `${cardDetails.expiry_month}/${cardDetails.expiry_year}`
 
-            const { data: orgProfiles } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('org_id', orgId)
-              .eq('role', 'owner')
-              .limit(1)
+            // Execute the update and fetch the IP address in a single DB round-trip
+            const { data: currentUserTracker } = await supabase
+              .from('trial_tracking')
+              .update({ card_last_4: last4, card_expiry: expiry })
+              .eq('user_id', ownerId)
+              .select('ip_address')
+              .single()
 
-            const ownerId = orgProfiles?.[0]?.id
-
-            if (ownerId) {
-              await supabase
+            if (currentUserTracker?.ip_address && currentUserTracker.ip_address !== 'unknown') {
+              const { data: abusers } = await supabase
                 .from('trial_tracking')
-                .update({ card_last_4: last4, card_expiry: expiry })
-                .eq('user_id', ownerId)
+                .select('user_id')
+                .eq('card_last_4', last4)
+                .eq('card_expiry', expiry)
+                .eq('ip_address', currentUserTracker.ip_address)
+                .neq('user_id', ownerId)
 
-              const { data: currentUserTracker } = await supabase
-                .from('trial_tracking')
-                .select('ip_address')
-                .eq('user_id', ownerId)
-                .single()
-
-              if (currentUserTracker?.ip_address && currentUserTracker.ip_address !== 'unknown') {
-                const { data: abusers } = await supabase
-                  .from('trial_tracking')
-                  .select('user_id')
-                  .eq('card_last_4', last4)
-                  .eq('card_expiry', expiry)
-                  .eq('ip_address', currentUserTracker.ip_address)
-                  .neq('user_id', ownerId)
-
-                if (abusers && abusers.length > 0) {
-                  console.warn(`🚨 TRIAL ABUSE DETECTED: IP ${currentUserTracker.ip_address} and card last4 ${last4} matches multiple accounts! Owner ID: ${ownerId}`)
-                  await supabase
-                    .from('organizations')
-                    .update({ subscription_status: 'trial_abuse_suspended' })
-                    .eq('id', orgId)
-                }
+              if (abusers && abusers.length > 0) {
+                console.warn(`🚨 TRIAL ABUSE DETECTED: IP ${currentUserTracker.ip_address} and card last4 ${last4} matches multiple accounts! Owner ID: ${ownerId}`)
+                await supabase
+                  .from('organizations')
+                  .update({ subscription_status: 'trial_abuse_suspended' })
+                  .eq('id', orgId)
               }
             }
           }

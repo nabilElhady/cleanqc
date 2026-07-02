@@ -91,7 +91,7 @@ export async function createCheckoutSession(planType: 'starter' | 'growth' | 'sc
 
 /**
  * @deprecated Use getCustomerPortalUrl() from @/app/actions/billing instead.
- * Kept for backwards compatibility — delegates to the canonical implementation.
+ * Kept for backwards compatibility - delegates to the canonical implementation.
  */
 export async function createPortalSession(): Promise<{ url: string }> {
   const { getCustomerPortalUrl } = await import('@/app/actions/billing')

@@ -79,6 +79,7 @@ export function DashboardClient({
       sub: `${pendingJobsCount} waiting to start`,
       icon: Briefcase,
       href: '/jobs',
+      colorClass: 'bg-blue-500/10 text-blue-600 border-blue-500/30',
     },
     {
       label: 'Completed Jobs',
@@ -86,7 +87,7 @@ export function DashboardClient({
       sub: 'With photo proof',
       icon: CheckCircle,
       href: '/jobs',
-      success: true,
+      colorClass: 'bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/30',
     },
     {
       label: 'Checklists',
@@ -94,6 +95,7 @@ export function DashboardClient({
       sub: 'Ready to use',
       icon: ClipboardList,
       href: '/templates',
+      colorClass: 'bg-slate-500/10 text-slate-600 border-slate-500/30',
     },
     {
       label: 'Team Size',
@@ -101,6 +103,7 @@ export function DashboardClient({
       sub: 'Staff members',
       icon: Users,
       href: '/dashboard/team',
+      colorClass: 'bg-purple-500/10 text-purple-600 border-purple-500/30',
     },
   ]
 
@@ -197,21 +200,21 @@ export function DashboardClient({
         <div className="flex flex-wrap gap-3">
           <Link
             href="/dashboard/dispatch"
-            className="flex items-center gap-2 bg-[#09090B] text-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-[#27272A] transition-colors"
+            className="flex items-center gap-2 bg-[#09090B] text-white px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-[#27272A] hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm transition-all duration-200 shadow-sm"
           >
             <Send className="h-3.5 w-3.5" />
             Send a Job
           </Link>
           <Link
             href="/templates"
-            className="flex items-center gap-2 border border-[#E4E4E7] bg-white text-[#09090B] px-4 py-2.5 text-xs font-bold uppercase tracking-widest hover:border-[#09090B] transition-colors"
+            className="flex items-center gap-2 border border-[#E4E4E7] bg-white text-[#09090B] px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:border-[#09090B] transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             New Checklist
           </Link>
           <Link
             href="/dashboard/team"
-            className="flex items-center gap-2 border border-[#E4E4E7] bg-white text-[#09090B] px-4 py-2.5 text-xs font-bold uppercase tracking-widest hover:border-[#09090B] transition-colors"
+            className="flex items-center gap-2 border border-[#E4E4E7] bg-white text-[#09090B] px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:border-[#09090B] transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             Add Crew Member
@@ -226,7 +229,7 @@ export function DashboardClient({
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        {stats.map(({ label, value, sub, icon: Icon, href, success }) => (
+        {stats.map(({ label, value, sub, icon: Icon, href, colorClass }) => (
           <motion.div key={label} variants={cardVariants}>
             <Link href={href} className="block group">
               <div className="relative overflow-hidden bg-white border border-[#E4E4E7] p-6 h-[115px] flex flex-col justify-between transition-colors duration-200 hover:border-[#09090B]">
@@ -242,9 +245,7 @@ export function DashboardClient({
                   </div>
                   <div
                     className={`h-11 w-11 flex items-center justify-center border ${
-                      success
-                        ? 'bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/30'
-                        : 'bg-[#FAFAFA] text-[#09090B] border-[#E4E4E7]'
+                      colorClass || 'bg-[#FAFAFA] text-[#09090B] border-[#E4E4E7]'
                     }`}
                   >
                     <Icon className="h-5 w-5" />

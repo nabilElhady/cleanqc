@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { submitJobResponse } from '@/app/actions/responses'
+import { getSignedUploadUrl } from '@/app/actions/jobs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { motion } from 'framer-motion'
@@ -15,6 +16,7 @@ import {
   AlertCircle,
   MapPin,
   RefreshCw,
+  Lock,
 } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 
@@ -64,11 +66,16 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
         })
         setGpsLoading(false)
       },
-      (err) => {
-        console.error('GPS error:', err)
-        setGpsError('Could not retrieve GPS coordinates. Please enable location services.')
-        setGpsLoading(false)
-      },
+(err) => {
+  console.error('GPS error:', err.code, err.message)
+  const messages: Record<number, string> = {
+    1: 'Location access denied. Please enable location permissions for this site in your browser settings.',
+    2: 'Could not determine your location. Make sure location services are enabled on this device.',
+    3: 'Location request timed out. Please try again.',
+  }
+  setGpsError(messages[err.code] || 'Could not retrieve GPS coordinates. Please enable location services.')
+  setGpsLoading(false)
+},
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }, [])
@@ -108,21 +115,25 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
         console.warn('Image compression failed, using original file:', compErr)
       }
 
-      // Upload to Supabase Storage: job-photos/org_id/job_id/item_id.jpg
-      const supabase = createClient()
+      // Request a signed upload URL from our Server Action
       const fileExtension = file.name.split('.').pop() || 'jpg'
-      const storagePath = `${orgId}/${jobId}/${itemId}.${fileExtension}`
+      const { success, signedUrl, token, path, error: urlErr } = await getSignedUploadUrl(orgId, jobId, itemId, fileExtension)
+      
+      if (!success || !signedUrl || !token || !path) {
+        throw new Error(urlErr || 'Failed to get upload URL')
+      }
 
+      // Upload directly to Supabase using the signed URL
+      const supabase = createClient()
       const { error: uploadErr } = await supabase.storage
-        .from('job-photos')
-        .upload(storagePath, uploadFile, {
-          upsert: true,
-          contentType: file.type || 'image/jpeg',
-        })
+        .from('job-proofs')
+        .uploadToSignedUrl(path, token, uploadFile)
 
       if (uploadErr) {
         throw new Error(uploadErr.message)
       }
+
+      const storagePath = path
 
       // Save path to state
       setPhotos((prev) => ({
@@ -192,14 +203,14 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Geolocation Status Card */}
-      <Card className="border-white/8 bg-[#18181B]/40 backdrop-blur-md">
+      <Card className="border-[#E4E4E7] bg-white/80 backdrop-blur-md shadow-md">
         <CardContent className="p-4 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <MapPin className={`h-4 w-4 shrink-0 ${gps ? 'text-[#8B5CF6] animate-pulse' : 'text-[#A1A1AA]'}`} />
-            <div className="text-[#A1A1AA]">
+            <MapPin className={`h-4 w-4 shrink-0 ${gps ? 'text-[#10B981] animate-pulse' : 'text-[#71717A]'}`} />
+            <div className="text-[#71717A]">
               {gpsLoading ? (
                 <span className="flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin text-[#8B5CF6]" />
+                  <Loader2 className="h-3 w-3 animate-spin text-[#10B981]" />
                   Acquiring GPS location...
                 </span>
               ) : gps ? (
@@ -207,7 +218,7 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
                   Location Captured ({gps.lat.toFixed(5)}, {gps.lng.toFixed(5)})
                 </span>
               ) : gpsError ? (
-                <span className="text-[#A1A1AA] font-medium">{gpsError}</span>
+                <span className="text-[#71717A] font-medium">{gpsError}</span>
               ) : (
                 <span>Location pending...</span>
               )}
@@ -219,7 +230,7 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
             variant="ghost"
             onClick={fetchLocation}
             disabled={gpsLoading}
-            className="h-7 w-7 p-0 hover:bg-[#18181B] rounded-full flex items-center justify-center text-[#A1A1AA] hover:text-[#FAFAFA]"
+            className="h-7 w-7 p-0 hover:bg-[#F4F4F5] rounded-full flex items-center justify-center text-[#71717A] hover:text-[#09090B]"
             title="Refresh GPS"
           >
             <RefreshCw className={`h-3 w-3 ${gpsLoading ? 'animate-spin' : ''}`} />
@@ -229,7 +240,7 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
 
       {/* Error Message banner */}
       {error && (
-        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 text-sm flex items-start gap-2">
+        <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 text-sm flex items-start gap-2 shadow-sm">
           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
@@ -244,55 +255,68 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
           return (
             <Card
               key={item.id}
-              className={`border-white/8 bg-[#18181B] backdrop-blur-xl transition-all duration-300 rounded-xl overflow-hidden ${
-                checked[item.id] ? 'bg-[#18181B]/70 border-white/6' : ''
+              className={`border transition-all duration-300 rounded-xl overflow-hidden shadow-md ${
+                item.requires_photo && !isUploaded ? 'bg-gray-50' : 'bg-white'
+              } ${
+                checked[item.id] ? 'border-[#E4E4E7] opacity-80' : 'border-[#E4E4E7] hover:border-[#D4D4D8]'
               }`}
             >
               <CardContent className="p-4 flex items-center justify-between gap-4">
                 {/* Circular iOS-Style Checkbox and Label */}
-                <label className="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer select-none">
+                <label className={`flex items-center gap-3.5 flex-1 min-w-0 select-none ${item.requires_photo && !isUploaded ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
+                    disabled={item.requires_photo && !isUploaded}
                     checked={!!checked[item.id]}
                     onChange={(e) => handleCheckboxChange(item.id, e.target.checked)}
                     className="sr-only"
                   />
-                  <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    animate={{
-                      backgroundColor: checked[item.id] ? '#10B981' : 'transparent',
-                      borderColor: checked[item.id] ? '#10B981' : 'rgba(255, 255, 255, 0.15)',
-                      scale: checked[item.id] ? 1.08 : 1,
-                    }}
-                    transition={{ type: 'spring', stiffness: 450, damping: 20 }}
-                    className="h-6 w-6 rounded-full border flex items-center justify-center shrink-0"
-                  >
-                    {checked[item.id] && (
-                      <motion.svg
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                        className="h-3 w-3 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </motion.svg>
-                    )}
-                  </motion.div>
+                  <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0">
+                    <motion.div
+                      initial={false}
+                      whileTap={{ scale: item.requires_photo && !isUploaded ? 1 : 0.9 }}
+                      animate={{
+                        backgroundColor: checked[item.id] ? '#10B981' : (item.requires_photo && !isUploaded ? '#F4F4F5' : '#FFFFFF'),
+                        borderColor: checked[item.id] ? '#10B981' : (item.requires_photo && !isUploaded ? '#D4D4D8' : '#E4E4E7'),
+                        scale: checked[item.id] ? 1.08 : 1,
+                      }}
+                      transition={{ type: 'spring', stiffness: 450, damping: 20 }}
+                      className="h-6 w-6 rounded-full border flex items-center justify-center bg-white"
+                    >
+                      {item.requires_photo && !isUploaded && !checked[item.id] ? (
+                        <Lock className="h-3 w-3 text-[#A1A1AA]" />
+                      ) : checked[item.id] ? (
+                        <motion.svg
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                          className="h-3 w-3 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </motion.svg>
+                      ) : null}
+                    </motion.div>
+                  </div>
                   <div className="min-w-0">
                     <span
-                      className={`text-sm font-medium transition-all duration-200 break-words leading-tight ${
-                        checked[item.id] ? 'line-through text-[#A1A1AA]/60' : 'text-[#FAFAFA]'
+                      className={`text-sm font-semibold transition-all duration-200 break-words leading-tight ${
+                        checked[item.id] ? 'line-through text-neutral-400' : 'text-neutral-800'
                       }`}
                     >
                       {item.label}
                     </span>
-                    {item.requires_photo && (
-                      <span className="block text-[10px] text-[#8B5CF6] font-extrabold uppercase tracking-wider mt-0.5">
-                        Requires photo proof
+                    {item.requires_photo && !isUploaded && (
+                      <span className="block text-[10px] text-[#52525B] font-medium mt-0.5">
+                        Complete photo proof to unlock
+                      </span>
+                    )}
+                    {item.requires_photo && isUploaded && (
+                      <span className="flex items-center gap-1 text-[10px] text-[#10B981] font-extrabold uppercase tracking-wider mt-0.5">
+                        <CheckCircle2 className="h-3 w-3" /> Photo Attached
                       </span>
                     )}
                   </div>
@@ -317,7 +341,7 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
                         type="button"
                         variant="ghost"
                         disabled
-                        className="bg-[#18181B] border border-white/8 h-9 w-9 p-0 rounded-lg flex items-center justify-center cursor-not-allowed"
+                        className="bg-[#FAFAFA] border border-[#E4E4E7] h-9 w-9 p-0 rounded-lg flex items-center justify-center cursor-not-allowed"
                       >
                         <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
                       </Button>
@@ -336,7 +360,7 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
                         type="button"
                         variant="outline"
                         onClick={() => triggerCamera(item.id)}
-                        className="bg-[#18181B] hover:bg-[#27272A] border border-white/8 text-[#A1A1AA] hover:text-[#FAFAFA] h-9 px-2.5 gap-1 rounded-lg text-xs flex items-center justify-center"
+                        className="bg-white hover:bg-[#FAFAFA] active:bg-[#F4F4F5] active:scale-95 transition-all border border-[#E4E4E7] text-[#52525B] hover:text-[#09090B] h-9 px-2.5 gap-1 rounded-lg text-xs flex items-center justify-center shadow-sm"
                       >
                         <Camera className="h-4 w-4" />
                         <span>Proof</span>
@@ -354,9 +378,9 @@ export default function ChecklistForm({ jobId, orgId, items }: ChecklistFormProp
       <motion.button
         type="submit"
         disabled={isSubmitting}
-        whileHover={{ scale: 1.02, boxShadow: '0 0 25px rgba(139, 92, 246, 0.4)' }}
+        whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full h-14 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-extrabold uppercase tracking-widest text-xs rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 border border-[#8B5CF6]/30 shadow-[0_0_20px_rgba(139,92,246,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full h-14 bg-[#09090B] hover:bg-[#27272A] text-white font-extrabold uppercase tracking-widest text-xs rounded-xl transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 border border-transparent shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-8 mb-4"
       >
         {isSubmitting ? (
           <>

@@ -72,7 +72,7 @@ export default async function JobReviewPage({ params }: PageProps) {
       profiles!assigned_to (
         full_name
       ),
-      checklist_templates!template_id (
+      templates!template_id (
         id,
         name
       )
@@ -102,19 +102,34 @@ export default async function JobReviewPage({ params }: PageProps) {
     ? rawProfiles[0]?.full_name
     : (rawProfiles as any)?.full_name || 'Unassigned'
 
-  const rawTemplates = job.checklist_templates
-  const templateName = Array.isArray(rawTemplates)
+  const rawTemplates = job.templates
+  let templateName = Array.isArray(rawTemplates)
     ? rawTemplates[0]?.name
     : (rawTemplates as any)?.name || 'Standard Checklist'
 
-  // 3. Fetch template items ordered by sort_order
-  const { data: items } = await supabase
-    .from('template_items')
-    .select('id, label, requires_photo, sort_order')
-    .eq('template_id', job.template_id)
-    .order('sort_order', { ascending: true })
+  let templateItems: any[] = []
 
-  const templateItems = items || []
+  // 3. Fetch template items ordered by sort_order
+  if (job.templates) {
+    const { data: items } = await supabase
+      .from('template_items')
+      .select('id, label, requires_photo, sort_order')
+      .eq('template_id', job.template_id)
+      .order('sort_order', { ascending: true })
+    templateItems = items || []
+  } else if (job.template_id) {
+    // Fallback to system templates
+    const { data: sysTemplate } = await db
+      .from('templates')
+      .select('name, items')
+      .eq('id', job.template_id)
+      .single()
+
+    if (sysTemplate) {
+      templateName = sysTemplate.name
+      templateItems = (sysTemplate.items as any[]) || []
+    }
+  }
 
   // 4. Fetch job responses
   const { data: responses } = await supabase
@@ -129,7 +144,7 @@ export default async function JobReviewPage({ params }: PageProps) {
   for (const resp of jobResponses) {
     if (resp.photo_path) {
       const { data, error } = await supabase.storage
-        .from('job-photos')
+        .from('job-proofs')
         .createSignedUrl(resp.photo_path, 3600)
       if (data?.signedUrl) {
         signedUrls[resp.item_id] = data.signedUrl

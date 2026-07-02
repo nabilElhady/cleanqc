@@ -4,6 +4,7 @@ import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { Briefcase, Calendar, MapPin, User, FileText, CheckCircle, ChevronRight, Search, Clock } from 'lucide-react'
+import { StatusPill } from '@/components/ui/status-pill'
 
 interface Job {
   id: string
@@ -13,7 +14,7 @@ interface Job {
   scheduled_at: string
   completed_at: string | null
   template_id: string
-  checklist_templates: { id: string; name: string } | null
+  templates: { id: string; name: string } | null
   profiles: { id: string; full_name: string | null } | null
 }
 
@@ -26,7 +27,7 @@ type TabType = 'all' | 'pending' | 'in_progress' | 'completed'
 function FlatCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`relative overflow-hidden bg-[#FFFFFF] border border-[#E4E4E7] p-6 flex flex-col justify-between h-[230px] transition-colors duration-200 group hover:border-[#09090B] ${className}`}
+      className={`relative rounded-2xl bg-white border border-[#E4E4E7] shadow-md hover:shadow-lg hover:-translate-y-0.5 p-6 flex flex-col justify-between h-[230px] transition-all duration-200 group z-10 ${className}`}
     >
       {children}
     </div>
@@ -45,7 +46,7 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
     const title = job.title.toLowerCase()
     const loc = job.location.toLowerCase()
     const crew = (job.profiles?.full_name || '').toLowerCase()
-    const tempName = (job.checklist_templates?.name || '').toLowerCase()
+    const tempName = (job.templates?.name || '').toLowerCase()
     const query = searchQuery.toLowerCase()
 
     return (
@@ -99,7 +100,7 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
             placeholder="Search by property, crew member, or checklist..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#FFFFFF] border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder-[#71717A] focus:outline-none transition-colors duration-200"
+            className="w-full pl-10 pr-4 py-2 bg-[#FFFFFF] border border-[#E4E4E7] focus:border-[#09090B] text-sm text-[#09090B] placeholder:text-zinc-600 focus:outline-none transition-colors duration-200"
           />
         </div>
 
@@ -129,16 +130,16 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-[#FFFFFF] border border-[#E4E4E7] p-12 text-center max-w-xl mx-auto flex flex-col items-center"
+            className="min-h-[240px] border border-dashed border-[#E4E4E7] rounded-xl bg-[#FAFAFA] p-12 text-center flex flex-col items-center justify-center max-w-xl mx-auto shadow-sm"
           >
-            <div className="h-12 w-12 bg-[#FAFAFA] flex items-center justify-center mb-4 border border-[#E4E4E7]">
-              <Briefcase className="h-6 w-6 text-[#71717A]" />
+            <div className="bg-zinc-100 p-3 rounded-full mb-4">
+              <Briefcase strokeWidth={1.5} className="h-8 w-8 text-[#71717A]" />
             </div>
-            <h3 className="text-sm font-bold text-[#09090B]">No jobs yet</h3>
-            <p className="text-[#71717A] text-sm mt-2 leading-relaxed max-w-xs">
+            <h3 className="text-sm font-bold text-[#09090B] mb-2">No jobs yet</h3>
+            <p className="text-sm font-medium text-[#71717A] max-w-xs mx-auto">
               {searchQuery
                 ? 'No jobs match your search. Try a different name or location.'
-                : 'Jobs you send to your crew will appear here. Once a job is completed, you can click it to see the full photo report from the cleaner.'}
+                : 'Jobs you send to your crew will appear here. Once a job is completed, you can click it to see the full photo report.'}
             </p>
           </motion.div>
         ) : (
@@ -150,7 +151,7 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
           >
             {filteredJobs.map((job) => {
               const crewMember = job.profiles?.full_name || 'Unassigned'
-              const templateTitle = job.checklist_templates?.name || 'Standard Checklist'
+              const templateTitle = job.templates?.name || 'Standard Checklist'
               const dateObj = new Date(job.scheduled_at)
               const formattedTime = job.scheduled_at
                 ? dateObj.toLocaleString(undefined, {
@@ -172,19 +173,13 @@ export function JobsListClient({ initialJobs }: JobsListClientProps) {
                       <h3 className="text-lg font-bold text-[#09090B] line-clamp-1 leading-snug">
                         {job.title}
                       </h3>
-                      <span
-                        className={`inline-flex items-center gap-1 shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${
-                          isCompleted
-                            ? 'bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/30'
-                            : isProgress
-                            ? 'bg-[#09090B]/5 text-[#09090B] border-[#09090B]/20'
-                            : 'bg-[#FAFAFA] text-[#71717A] border-[#E4E4E7]'
-                        }`}
+                      <StatusPill
+                        variant={isCompleted ? 'completed' : isProgress ? 'in_progress' : 'pending'}
                       >
                         {isCompleted && <CheckCircle className="h-3 w-3" />}
                         {isProgress && <Clock className="h-3 w-3" />}
                         <span>{job.status?.replace('_', ' ')}</span>
-                      </span>
+                      </StatusPill>
                     </div>
 
                     {/* Details Block - F Pattern structure */}

@@ -37,7 +37,7 @@ export default async function BillingSettingsPage() {
 
   if (!billing) {
     return (
-      <div className="border border-[#E4E4E7] p-8 bg-white max-w-2xl">
+      <div className="rounded-2xl border-2 border-zinc-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 max-w-2xl relative z-10" style={{ backgroundColor: '#f4f4f5' }}>
         <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-[#09090B] mb-2">Error</h2>
         <p className="font-mono text-sm text-[#71717A] uppercase">Failed to load billing information. Please verify your authentication state.</p>
       </div>
@@ -55,7 +55,7 @@ export default async function BillingSettingsPage() {
         </p>
       </div>
 
-      <div className="border border-[#E4E4E7] bg-white p-8 space-y-8">
+      <div className="rounded-2xl border-2 border-zinc-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 space-y-8 relative z-10" style={{ backgroundColor: '#f4f4f5' }}>
         {/* Status Indicator */}
         <div className="flex flex-col space-y-2">
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#71717A]">
